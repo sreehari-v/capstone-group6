@@ -1,20 +1,25 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
+import SignupPage from "./pages/SignupPage";
+import LoginPage from "./pages/LoginPage";
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [showLogin, setShowLogin] = useState(false);
 
   return (
     <>
-     
-     <h1>lets start the project </h1>
-      
-      
-      
+      <button
+        style={{ position: "absolute", top: "10px", left: "10px" }}
+        className="mb-6 px-6 py-2 bg-primary text-white font-medium rounded-md shadow hover:bg-primary/90"
+        onClick={() => {
+          setShowLogin(!showLogin);
+        }}
+      >
+        {showLogin ? "Hide" : "Show"} Login
+      </button>
+      {showLogin ? <LoginPage /> : <SignupPage />}
     </>
-  )
+  );
 }
 
-export default App
+export default App;
