@@ -10,7 +10,7 @@ const About = () => {
           </h1>
           <p className="mt-4 max-w-3xl mx-auto text-lg text-text-secondary-light dark:text-text-secondary-dark">
             Discover our story, our mission, and the team dedicated to
-            imving your well-being through the power of breath.
+            improving your well-being through the power of breath.
           </p>
         </div>
 
