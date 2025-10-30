@@ -10,52 +10,42 @@ const Features = () => {
             Explore Our Features
           </h1>
           <p className="mt-4 max-w-3xl mx-auto text-lg text-[var(--text-secondary)]">
-            Dive deeper into the powerful tools CareOn offers to help you
-            understand and improve your breathing.
+            Discover how CareOn helps you maintain a healthier lifestyle with intelligent tracking and personalized insights.
           </p>
         </div>
       </section>
 
-      {/* Real-time Tracking */}
+      {/* Breath Tracking */}
       <section
         className="py-20 px-4 md:px-10 bg-[var(--background-dark)]"
-        id="real-time-tracking"
+        id="breath-tracking"
       >
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="text-white">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tighter">
-              Real-time Tracking
+              Breath Tracking
             </h2>
             <p className="mt-6 text-lg text-white/70">
-              See your breath in motion. Our advanced algorithm utilizes your
-              phone&apos;s accelerometer and gyroscope to visualize your
-              breathing patterns in real-time. This immediate feedback helps you
-              connect with your body and understand your unique rhythm.
+              Connect with your breathing patterns in real-time. CareOn uses your phone’s built-in sensors to track and visualize your breath, helping you understand and improve your respiratory health.
             </p>
             <ul className="mt-6 space-y-4 text-white/90">
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Instant visual representation of your inhales and exhales.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Visualize your inhale and exhale rhythm live.</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Track your breaths per minute (BPM) and session duration.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Monitor your average breaths per minute (BPM).</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Monitor the consistency and depth of your breathing.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Detect irregular patterns and receive breathing tips.</span>
               </li>
             </ul>
           </div>
           <div className="flex items-center justify-center">
             <img
-              alt="A visual representation of real-time breath tracking on a smartphone."
+              alt="Visualization of breath tracking on a smartphone."
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
@@ -66,15 +56,15 @@ const Features = () => {
         </div>
       </section>
 
-      {/* Personalized Insights */}
+      {/* Step Tracking */}
       <section
         className="py-20 px-4 md:px-10 bg-[var(--background-light)]"
-        id="personalized-insights"
+        id="step-tracking"
       >
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="flex items-center justify-center md:order-2">
             <img
-              alt="A smartphone screen showing personalized breathing insights and progress charts."
+              alt="A smartphone showing step tracking and daily goal progress."
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
@@ -84,78 +74,60 @@ const Features = () => {
           </div>
           <div className="text-[var(--text-primary)] md:order-1">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tighter">
-              Personalized Insights
+              Step Tracking
             </h2>
             <p className="mt-6 text-lg text-[var(--text-secondary)]">
-              Go beyond the numbers. CareOn analyzes your tracked data to
-              provide actionable insights and highlight trends over time.
-              Understand how your breathing changes in different situations and
-              receive tailored recommendations to foster healthier habits.
+              Stay active and motivated with CareOn’s step tracking feature. Track your daily steps, distance covered, and calories burned — all automatically synced with your phone’s motion sensors.
             </p>
             <ul className="mt-6 space-y-4 text-[var(--text-primary)]/90">
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Daily, weekly, and monthly progress reports.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Real-time step count and distance measurement.</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>AI-powered suggestions for improvement.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Set personalized daily goals and streak reminders.</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Tag sessions to identify triggers for stress or relaxation.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Visual progress charts to keep you motivated.</span>
               </li>
             </ul>
           </div>
         </div>
       </section>
 
-      {/* Guided Breathing Exercises */}
+      {/* Medication Reminder */}
       <section
         className="py-20 px-4 md:px-10 bg-[var(--background-dark)]"
-        id="guided-exercises"
+        id="medication-reminder"
       >
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
           <div className="text-white">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tighter">
-              Guided Breathing Exercises
+              Medication Reminder
             </h2>
             <p className="mt-6 text-lg text-white/70">
-              Whether you want to calm your mind, boost your energy, or prepare
-              for sleep, our library of guided exercises can help. Follow along
-              with audio and visual cues to practice proven breathing techniques
-              designed by experts.
+              Never miss a dose again. CareOn’s smart medication reminder ensures you take your prescriptions on time by sending personalized notifications and tracking your adherence.
             </p>
             <ul className="mt-6 space-y-4 text-white/90">
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Exercises for stress relief, focus, sleep, and more.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Custom reminders for each medication and dosage time.</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Customizable session lengths to fit your schedule.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Track missed and completed doses easily.</span>
               </li>
               <li className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">
-                  check_circle
-                </span>
-                <span>Soothing soundscapes to enhance your practice.</span>
+                <span className="material-symbols-outlined text-2xl text-[var(--primary-color)]">check_circle</span>
+                <span>Sync reminders with your daily health routine.</span>
               </li>
             </ul>
           </div>
           <div className="flex items-center justify-center">
             <img
-              alt="A serene image of a person meditating while using a smartphone with a guided breathing app."
+              alt="A smartphone showing medication reminders and schedule notifications."
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
@@ -168,5 +140,4 @@ const Features = () => {
     </main>
   );
 };
-
 export default Features;
