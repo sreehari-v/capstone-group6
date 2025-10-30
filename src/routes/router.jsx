@@ -9,6 +9,9 @@ import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
 import DashboardLayout from "../layouts/DashboardLayout";
 import DashBoard from "../pages/DashBoard";
+import StepTracking from "../pages/StepTracking";
+import Breaths from "../pages/Breaths";
+import Medication from "../pages/Medication";
 
 const router = createBrowserRouter([
   {
@@ -27,7 +30,12 @@ const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <DashboardLayout />,
-    children: [{ index: true, element: <DashBoard /> }],
+    children: [
+      { index: true, element: <DashBoard /> },
+      { path: "steps", element: <StepTracking /> },
+      { path: "medication", element: <Medication /> },
+      { path: "breath", element: <Breaths /> },
+    ],
   },
 ]);
 
