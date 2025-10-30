@@ -7,7 +7,9 @@ function AppLayout() {
   return (
     <>
       <MainNavBar />
-      <Outlet />
+      <div style={{ paddingTop: "60px" }}>
+        <Outlet />
+      </div>
       <MainFooter />
     </>
   );

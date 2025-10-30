@@ -20,7 +20,9 @@ const MainNavBar = () => {
             />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">Care On</h2>
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+          Care On
+        </h2>
       </div>
 
       <nav className="hidden md:flex items-center gap-8">
@@ -42,7 +44,7 @@ const MainNavBar = () => {
           to="/features"
           className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
         >
-          Pricing
+          Features
         </NavLink>
 
         <NavLink
