@@ -1,5 +1,5 @@
 import React from "react";
-import "./LoginForm.css";
+import { Link } from "react-router-dom";
 
 const LoginForm = () => {
   return (
@@ -68,12 +68,12 @@ const LoginForm = () => {
             </label>
           </div>
           <div className="text-sm">
-            <a
-              href="#"
+            <Link
+              to="/forgot-password"
               className="font-medium text-primary hover:text-primary/90"
             >
               Forgot your password?
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -116,9 +116,12 @@ const LoginForm = () => {
 
       <p className="mt-8 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
         Don't have an account?{" "}
-        <a href="/signup" className="font-medium text-primary hover:text-primary/90">
+        <Link
+          to="/register"
+          className="font-medium text-primary hover:text-primary/90"
+        >
           Sign up
-        </a>
+        </Link>
       </p>
     </div>
   );

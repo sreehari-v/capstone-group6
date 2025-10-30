@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 export default function SignupForm() {
   return (
@@ -81,8 +82,8 @@ export default function SignupForm() {
         </div>
 
         <div className="mt-6">
-          <a
-            href="#"
+          <Link
+            to="/"
             className="w-full inline-flex justify-center py-3 px-4 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm bg-white dark:bg-slate-800 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-gray-50 dark:hover:bg-slate-700"
           >
             <img
@@ -91,15 +92,18 @@ export default function SignupForm() {
               src="https://www.citypng.com/public/uploads/preview/google-logo-icon-gsuite-hd-701751694791470gzbayltphh.png"
             />
             <span className="ml-3">Sign in with Google</span>
-          </a>
+          </Link>
         </div>
       </div>
 
       <p className="mt-8 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
         Already have an account?{" "}
-        <a href="#" className="font-medium text-primary hover:text-primary/90">
+        <Link
+          to="/login"
+          className="font-medium text-primary hover:text-primary/90"
+        >
           Sign in
-        </a>
+        </Link>
       </p>
     </div>
   );
