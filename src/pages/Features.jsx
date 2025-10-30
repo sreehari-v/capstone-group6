@@ -49,7 +49,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDYgLPonTkfbXmfg1QxyQJK9UFvNOMrXGQSkV1wt_bisX-XYwDHC4DTb6eVm3oEYAhkeFrTgST1jtAvg1q-kwKhRyWLw29LRbf7iqs5vLwDsVI-s5Q_PfUmpH4W5pp61j6tJHBP5YYKXRDNUk1rFRy13X7JcIOiHUjwPBzBkvxVu9gdpI06f2yBs6fz4uUV7Xj7YHqIbgo1xJhbFMZlRgoDIsbNefn1bmE_mH5JykU6p7OFPs3H1arDJ3GezjOeQsY84JHS7WhDx0"
+              src="/src/assets/images/breath-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>
@@ -68,7 +68,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCus0vovOPsuilnQ7zpW5wXrSo5exyobuUpFgNE9KT3F5etukbVi6PWMB6FLJqGaOTCyLgQLTlTkGfz-Pu2MkxDtRfNvUIqU0Hr1FyLfzLcWTCbwpr4j7gSakqRGaLaO3tTS7nFCM2UrwUV8NfaB2hzvPjDi-YgOSRN5SRYYaMEVZ9P7kFtFHpv7pgYAjx2FjdUXjR1thlCM5zf7wXcN56FQmEP0AH1PT7rmrsLb9MvmV8JmAxhE-5PDsndMSYbNw-efXeE91Ss4As"
+              src="/src/assets/images/step-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>
@@ -131,7 +131,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbTQsaZOonKh26vbxK11S8TERHBxvi9LQXCSHJSFPEdgG1u-rMLxqA3t70fw6D2xW9jK01SPJrUbf2bSdz51u-wvkV1eq3IMAv_9b5xpq7nV3cv_C4rY6fYp5PqXKXAjZzSrKtsU6vJv99txvkHXGHmngPiHBR0mcCXs5VCxRaQjGYHOhbg3Wf2rmTGx10MjebzuBXom7MXDjuW4Gxgr3EK44gVRDcyOM7lyOW8hgvlsl-EwNEnQNz0Vr5u-D_6nChIEA6TSaieWs"
+              src="/src/assets/images/medication-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>
