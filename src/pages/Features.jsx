@@ -140,5 +140,4 @@ const Features = () => {
     </main>
   );
 };
-
 export default Features;
