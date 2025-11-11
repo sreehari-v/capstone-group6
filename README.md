@@ -1,2 +1,5 @@
 # Capstone Project
-This project was initialized from setup/careon-initial branch.
+
+This repo contains two parts:
+- `frontend/` — React app (Vite / CRA)
+- `backend/` — Node/Express API
