@@ -1,74 +1,104 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import OAuth from "../../OAuth";
+import axios from "axios";
 
 export default function SignupForm() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [name, setName] = useState("");
+
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/auth/signup`,
+        { name, email, password },
+        { withCredentials: true }
+      );
+
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Signup error:", err);
+      setError(err.response?.data?.message || "Signup failed");
+    }
+  };
+
   return (
     <div>
-      <h2 className="text-3xl font-bold text-center text-text-light dark:text-text-dark">
-        Create an Account
-      </h2>
-      <p className="text-center text-text-secondary-light dark:text-text-secondary-dark mt-2 mb-8">
-        Start your journey to a more mindful you.
-      </p>
-      <form>
-        <div className="space-y-6">
-          <div>
-            <label
-              htmlFor="email_signup"
-              className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark"
-            >
-              Email Address
-            </label>
-            <input
-              id="email_signup"
-              type="email"
-              required
-              autoComplete="email"
-              className="w-full px-3 py-2 mt-1 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-primary focus:border-primary bg-background-light dark:bg-background-dark sm:text-sm"
-            />
-          </div>
+      <h2 className="text-3xl font-bold text-center">Create an Account</h2>
+      {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
-          <div>
-            <label
-              htmlFor="password_signup"
-              className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark"
-            >
-              Password
-            </label>
-            <input
-              id="password_signup"
-              type="password"
-              required
-              autoComplete="new-password"
-              className="w-full px-3 py-2 mt-1 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-primary focus:border-primary bg-background-light dark:bg-background-dark sm:text-sm"
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+        <div>
+          <label>Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md"
+          />
+        </div>
 
-          <div>
-            <label
-              htmlFor="confirm_password_signup"
-              className="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark"
-            >
-              Confirm Password
-            </label>
-            <input
-              id="confirm_password_signup"
-              type="password"
-              required
-              autoComplete="new-password"
-              className="w-full px-3 py-2 mt-1 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-primary focus:border-primary bg-background-light dark:bg-background-dark sm:text-sm"
-            />
-          </div>
+        <div>
+          <label>Email Address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md"
+          />
+        </div>
+
+        <div>
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md"
+          />
+        </div>
+
+        <div>
+          <label>Confirm Password</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            required
+            className="w-full px-3 py-2 border rounded-md"
+          />
         </div>
 
         <button
           type="submit"
+<<<<<<< HEAD
           className="w-full mt-8 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+=======
+          className="w-full py-3 px-4 bg-primary text-white rounded-md"
+>>>>>>> origin/feature/login-signup
         >
           Sign Up
         </button>
       </form>
 
+<<<<<<< HEAD
       <div className="mt-6">
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -105,6 +135,12 @@ export default function SignupForm() {
           Sign in
         </Link>
       </p>
+=======
+      <div className="mt-6 text-center">
+        <div className="mb-2">Or continue with</div>
+        <OAuth />
+      </div>
+>>>>>>> origin/feature/login-signup
     </div>
   );
 }
