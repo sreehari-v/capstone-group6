@@ -7,6 +7,7 @@ import Science from "../pages/Science";
 import About from "../pages/About";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
+import VerifyEmail from "../pages/VerifyEmail";
 import DashboardLayout from "../layouts/DashboardLayout";
 import DashBoard from "../pages/DashBoard";
 import StepTracking from "../pages/StepTracking";
@@ -23,7 +24,7 @@ const router = createBrowserRouter([
       { path: "features", element: <Features /> },
       { path: "science", element: <Science /> },
       { path: "about", element: <About /> },
-      { path: "/step-tracking", element: <StepTracking /> },
+        { path: "verify-email", element: <VerifyEmail /> },
     ],
   },
   { path: "/login", element: <LoginPage /> },

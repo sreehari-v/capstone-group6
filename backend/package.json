@@ -1,5 +1,6 @@
 {
   "name": "backend",
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,9 +13,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+  "nodemailer": "^6.9.3",
+    "googleapis": "^164.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.19.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
