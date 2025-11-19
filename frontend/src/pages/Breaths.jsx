@@ -1,6 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
+import BreathTracker from '../components/BreathTracker/BreathTracker'
+import BreathStartModal from '../components/BreathTracker/BreathStartModal'
 
 function Breaths() {
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [trackingStarted, setTrackingStarted] = useState(false);
+  const [sensorError, setSensorError] = useState(null);
+
   return (
     <div className="flex flex-col max-w-[960px] flex-1 overflow-y-auto">
       {/* Page header */}
@@ -13,7 +19,7 @@ function Breaths() {
       {/* Buttons */}
       <div className="flex justify-stretch px-4 py-3">
         <div className="flex flex-1 gap-3 flex-wrap justify-start">
-          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
+          <button onClick={() => setShowStartModal(true)} className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
             Start Tracking
           </button>
           <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]">
@@ -21,6 +27,28 @@ function Breaths() {
           </button>
         </div>
       </div>
+
+  {/* Breath start modal (instructions). When user presses Start in the modal,
+      the inline tracker below will become active. */}
+  <BreathStartModal
+    open={showStartModal}
+    onStart={() => { setShowStartModal(false); setTrackingStarted(true); }}
+    onCancel={() => setShowStartModal(false)}
+  />
+
+  {/* Sensor error modal */}
+  {sensorError && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
+        <h3 className="text-lg font-bold mb-2">Sensor unavailable</h3>
+        <p className="mb-4">{sensorError.message || 'Motion sensor not available or permission denied.'}</p>
+        <div className="flex justify-end">
+          <button onClick={() => setSensorError(null)} className="px-3 py-2 bg-[#1193d4] text-white rounded">OK</button>
+        </div>
+      </div>
+    </div>
+  )}
+
 
       {/* Breathing Rate */}
       <h3 className="text-[#0d171b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
@@ -41,32 +69,13 @@ function Breaths() {
             <p className="text-[#e73508] text-base font-medium leading-normal">-2%</p>
           </div>
           <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
-            {/* Placeholder SVG / Chart */}
-            <svg
-              width="100%"
-              height="148"
-              viewBox="-3 0 478 150"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="none"
-            >
-              <path
-                d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H326.769H0V109Z"
-                fill="url(#paint0_linear)"
-              ></path>
-              <path
-                d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25"
-                stroke="#4c809a"
-                strokeWidth="3"
-                strokeLinecap="round"
-              ></path>
-              <defs>
-                <linearGradient id="paint0_linear" x1="236" y1="1" x2="236" y2="149" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#e7eff3" />
-                  <stop offset="1" stopColor="#e7eff3" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
+            {/* Render BreathTracker inline (replaces placeholder) */}
+            <div className="w-full">
+              <BreathTracker active={trackingStarted} onStop={() => setTrackingStarted(false)} onError={(err) => {
+                setSensorError(err);
+                setTrackingStarted(false);
+              }} />
+            </div>
             <div className="flex justify-around">
               {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => (
                 <p key={day} className="text-[#4c809a] text-[13px] font-bold leading-normal tracking-[0.015em]">{day}</p>
@@ -75,9 +84,6 @@ function Breaths() {
           </div>
         </div>
       </div>
-
-      {/* You can continue converting the remaining sections similarly */}
-      {/* Breathing Consistency, Breathing Patterns, Improvement Over Time */}
     </div>
   );
 }
