@@ -29,7 +29,9 @@ export default function SignupForm() {
         { withCredentials: true }
       );
 
-      navigate("/dashboard");
+      // Don't auto-login or navigate to the dashboard — require email verification first.
+      // Redirect user to the login page with a flag so UI can show a "check your email" message.
+      navigate("/login?sent=1");
     } catch (err) {
       console.error("Signup error:", err);
       setError(err.response?.data?.message || "Signup failed");

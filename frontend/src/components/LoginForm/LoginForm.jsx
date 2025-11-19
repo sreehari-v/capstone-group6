@@ -1,13 +1,17 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import OAuth from "../../OAuth";
 import axios from "axios";
 
 export default function LoginForm() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+
+  const searchParams = new URLSearchParams(location.search);
+  const sent = searchParams.get("sent");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,6 +32,12 @@ export default function LoginForm() {
   return (
     <div>
       <h2 className="text-3xl font-bold text-center">Welcome Back</h2>
+      {sent === "1" && (
+        <p className="text-blue-600 text-center mt-2">
+          Check your email — we sent a verification link. You must verify before
+          logging in.
+        </p>
+      )}
       {error && <p className="text-red-500 text-center mt-2">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-6 mt-4">
         <div>
