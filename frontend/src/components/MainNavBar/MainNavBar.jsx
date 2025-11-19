@@ -53,6 +53,13 @@ const MainNavBar = () => {
         >
           About Us
         </NavLink>
+
+        <NavLink
+          to="/Donate"
+          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+        >
+          Donate
+        </NavLink>
       </nav>
 
       <div className="flex items-center gap-4">
