@@ -76,11 +76,11 @@ function Breaths() {
                 setTrackingStarted(false);
               }} />
             </div>
-            <div className="flex justify-around">
+            {/* <div className="flex justify-around">
               {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => (
                 <p key={day} className="text-[#4c809a] text-[13px] font-bold leading-normal tracking-[0.015em]">{day}</p>
               ))}
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
