@@ -7,6 +7,7 @@ import Science from "../pages/Science";
 import About from "../pages/About";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
+import VerifyEmail from "../pages/VerifyEmail";
 import DashboardLayout from "../layouts/DashboardLayout";
 import DashBoard from "../pages/DashBoard";
 import StepTracking from "../pages/StepTracking";
@@ -26,6 +27,7 @@ const router = createBrowserRouter([
       { path: "about", element: <About /> },
       { path: "donate", element: <Donate /> },
       {path: "*", element: <div>404 Page Not Found</div>},
+        { path: "verify-email", element: <VerifyEmail /> },
     ],
   },
   { path: "/login", element: <LoginPage /> },
