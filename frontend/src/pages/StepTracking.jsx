@@ -19,7 +19,7 @@ const StepTracking = () => {
         <div className="gap-1 px-6 flex flex-1 justify-center py-5">
           <div className="layout-content-container flex flex-col w-80">
             <div className="flex h-full min-h-[700px] flex-col justify-between bg-slate-50 p-4">
-              <div className="w-80 min-h-[700px]" />
+              {/* <div className="w-80 min-h-[700px]" /> */}
             </div>
           </div>
 
