@@ -60,6 +60,12 @@ const MainNavBar = () => {
         >
           Donate
         </NavLink>
+        <NavLink
+          to="/dashboard"
+          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+        >
+          Dashboard (test)
+        </NavLink>
       </nav>
 
       <div className="flex items-center gap-4">

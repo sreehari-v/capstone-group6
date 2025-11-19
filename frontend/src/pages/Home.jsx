@@ -21,11 +21,19 @@ const Home = () => {
             >
               <span className="truncate">Get Started</span>
             </Link>
+
             <Link
               to="/features"
               className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm"
             >
               <span className="truncate">Learn More</span>
+            </Link>
+
+            <Link
+              to="/dashboard"
+              className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm"
+            >
+              <span className="truncate">Dashboard (Test)</span>
             </Link>
           </div>
         </div>

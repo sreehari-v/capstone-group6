@@ -12,10 +12,12 @@
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^8.9.2",
+    "apexcharts": "^5.3.6",
     "axios": "^1.13.2",
     "dotenv": "^17.2.3",
     "jspdf": "^3.0.3",
     "react": "^19.1.1",
+    "react-apexcharts": "^1.8.0",
     "react-dom": "^19.1.1",
     "react-router": "^7.9.5",
     "react-router-dom": "^7.9.5"
