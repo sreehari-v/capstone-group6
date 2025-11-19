@@ -23,6 +23,7 @@ const router = createBrowserRouter([
       { path: "features", element: <Features /> },
       { path: "science", element: <Science /> },
       { path: "about", element: <About /> },
+      { path: "/step-tracking", element: <StepTracking /> },
     ],
   },
   { path: "/login", element: <LoginPage /> },
