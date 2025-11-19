@@ -183,6 +183,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+import { sendMail } from "../utils/mailer.js";
+
 // Google OAuth
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -230,6 +232,7 @@ export const googleCallback = async (req, res) => {
                 name,
                 email,
                 authProvider: "google",
+                isVerified: true,
                 googleId,
                 avatar,
             });
@@ -238,6 +241,8 @@ export const googleCallback = async (req, res) => {
                 user.googleId = googleId;
                 user.authProvider = "google";
                 user.avatar = user.avatar || avatar;
+                // Mark existing user verified when they link via Google
+                user.isVerified = true;
                 await user.save();
             }
         }
@@ -317,24 +322,88 @@ export const signup = async (req, res) => {
             email,
             password: hashedPassword,
             authProvider: "local",
+            isVerified: false,
         });
 
-        const token = generateToken(user);
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+        // Generate a short-lived verification token (24h) and send email
+        const verifyToken = jwt.sign({ id: user._id, type: "verify" }, process.env.JWT_SECRET, {
+            expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
         });
 
-        res.status(201).json({
-            id: user._id,
-            name: user.name,
-            email: user.email,
-        });
+        const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+
+        const html = `<p>Hi ${user.name},</p>
+        <p>Welcome to CareOn! Please verify your email by clicking the link below:</p>
+        <p><a href="${verifyUrl}">Verify Email</a></p>
+        <p>If you didn't create an account, ignore this email.</p>`;
+
+        let previewUrl = null;
+        try {
+            const result = await sendMail({ to: user.email, subject: "Verify your CareOn email", html });
+            previewUrl = result?.previewUrl || null;
+            if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
+        } catch (err) {
+            console.error("Failed to send verification email:", err);
+        }
+
+        // Return user summary but don't auto-login until verified if you prefer
+        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email sent" };
+        if (previewUrl && process.env.NODE_ENV !== "production") responsePayload.previewUrl = previewUrl;
+        res.status(201).json(responsePayload);
     } catch (err) {
         console.error("Signup error:", err);
         res.status(500).json({ message: "Signup failed" });
+    }
+};
+
+// ===========================
+// 7️⃣ Verify email
+// ===========================
+export const verifyEmail = async (req, res) => {
+    try {
+        const token = req.query.token;
+        if (!token) return res.status(400).send("Missing token");
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded?.id) return res.status(400).send("Invalid token");
+
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).send("User not found");
+
+        user.isVerified = true;
+        await user.save();
+
+        // Redirect to frontend with a flag
+        const redirectTo = process.env.FRONTEND_URL || "http://localhost:5173";
+        return res.redirect(`${redirectTo}/login?verified=1`);
+    } catch (err) {
+        console.error("Verify email error:", err);
+        return res.status(400).send("Token invalid or expired");
+    }
+};
+
+// ===========================
+// 8️⃣ Verify email (JSON API)
+//    Use this endpoint from SPA clients (POST /api/auth/verify-email)
+// ===========================
+export const verifyEmailJson = async (req, res) => {
+    try {
+        const token = req.body?.token || req.query?.token;
+        if (!token) return res.status(400).json({ ok: false, message: "Missing token" });
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded?.id) return res.status(400).json({ ok: false, message: "Invalid token" });
+
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ ok: false, message: "User not found" });
+
+        user.isVerified = true;
+        await user.save();
+
+        return res.json({ ok: true, message: "Email verified" });
+    } catch (err) {
+        console.error("Verify email (json) error:", err);
+        return res.status(400).json({ ok: false, message: "Token invalid or expired" });
     }
 };
 
@@ -357,6 +426,11 @@ export const login = async (req, res) => {
         const valid = await bcrypt.compare(password, user.password || "");
         if (!valid)
             return res.status(401).json({ message: "Invalid credentials" });
+
+        // Prevent login if email not verified
+        if (user.isVerified === false) {
+            return res.status(403).json({ message: "Please verify your email before logging in" });
+        }
 
         const token = generateToken(user);
 

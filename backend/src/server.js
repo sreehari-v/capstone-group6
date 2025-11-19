@@ -40,7 +40,7 @@ app.use(
 );
 
 // -----------------------------
-// 🛣 API Routes
+// API Routes
 // -----------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);

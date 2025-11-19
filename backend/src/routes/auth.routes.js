@@ -20,12 +20,17 @@ import {
   googleCallback,
   me,
   logout,
+  verifyEmail,
+  verifyEmailJson,
 } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
 router.post("/signup", signup);
 router.post("/login", login);
+
+router.get("/verify-email", verifyEmail);
+router.post("/verify-email", verifyEmailJson);
 
 router.get("/google", getGoogleAuthURL);
 router.get("/google/callback", googleCallback);
