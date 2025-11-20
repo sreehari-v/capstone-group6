@@ -63,6 +63,13 @@ const MainNavBar = () => {
           </NavLink>
 
           <NavLink
+            to="/Donate"
+            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+          >
+            Donate
+          </NavLink>
+
+          <NavLink
             to="/dashboard"
             className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
           >
@@ -126,6 +133,21 @@ const MainNavBar = () => {
           >
             About Us
           </NavLink>
+
+        <NavLink
+          to="/Donate"
+          onClick={closeMenu}
+          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+        >
+          Donate
+        </NavLink>
+        
+        {/* <NavLink
+          to="/dashboard"
+          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+        >
+          Dashboard (test)
+        </NavLink> */}
 
           <NavLink
             to="/dashboard"
