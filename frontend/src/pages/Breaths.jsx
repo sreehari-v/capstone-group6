@@ -6,6 +6,9 @@ function Breaths() {
   const [showStartModal, setShowStartModal] = useState(false);
   const [trackingStarted, setTrackingStarted] = useState(false);
   const [sensorError, setSensorError] = useState(null);
+  const [resetCounter, setResetCounter] = useState(0);
+  const [everStarted, setEverStarted] = useState(false);
+  const [sensitivity, setSensitivity] = useState(3);
 
   return (
     <div className="flex flex-col max-w-[960px] flex-1 overflow-y-auto">
@@ -16,15 +19,53 @@ function Breaths() {
         </p>
       </div>
 
-      {/* Buttons */}
+      {/* Single start/pause button (Reset shown when paused) */}
       <div className="flex justify-stretch px-4 py-3">
-        <div className="flex flex-1 gap-3 flex-wrap justify-start">
-          <button onClick={() => setShowStartModal(true)} className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
-            Start Tracking
+        <div className="flex flex-1 gap-3 flex-wrap justify-start items-center">
+          <button
+            onClick={() => {
+              if (trackingStarted) {
+                // pause
+                setTrackingStarted(false);
+              } else if (everStarted) {
+                // resume without modal
+                setTrackingStarted(true);
+              } else {
+                // show start modal
+                setShowStartModal(true);
+              }
+            }}
+            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]"
+          >
+            {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
           </button>
-          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]">
-            Guided Tracking
-          </button>
+          {/* Reset appears when paused and user has previously started */}
+          {!trackingStarted && everStarted && (
+            <button
+              onClick={() => {
+                setResetCounter((c) => c + 1);
+                // hide the Reset button after clearing so UI reflects the cleared state
+                setEverStarted(false);
+                setTrackingStarted(false);
+              }}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]"
+            >
+              Reset
+            </button>
+          )}
+          {/* Global sensitivity control (affects BreathTracker) */}
+          <div className="flex items-center gap-2 ml-2">
+            <label className="text-sm text-gray-600">Sensitivity</label>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={sensitivity}
+              onChange={(e) => setSensitivity(Number(e.target.value))}
+              className="w-36"
+              style={{ accentColor: '#1193d4', background: '#e7eff3', height: 6, borderRadius: 6 }}
+            />
+          </div>
         </div>
       </div>
 
@@ -32,7 +73,7 @@ function Breaths() {
       the inline tracker below will become active. */}
   <BreathStartModal
     open={showStartModal}
-    onStart={() => { setShowStartModal(false); setTrackingStarted(true); }}
+    onStart={() => { setShowStartModal(false); setTrackingStarted(true); setEverStarted(true); }}
     onCancel={() => setShowStartModal(false)}
   />
 
@@ -50,38 +91,22 @@ function Breaths() {
   )}
 
 
-      {/* Breathing Rate */}
-      <h3 className="text-[#0d171b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
-        Breathing Rate
-      </h3>
-      <div className="flex flex-wrap gap-4 px-4 py-6">
-        <div className="flex min-w-72 flex-1 flex-col gap-2">
-          <p className="text-[#0d171b] text-base font-medium leading-normal">
-            Breathing Rate (BPM)
-          </p>
-          <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight truncate">
-            16 BPM
-          </p>
-          <div className="flex gap-1">
-            <p className="text-[#4c809a] text-base font-normal leading-normal">
-              Last 7 Days
-            </p>
-            <p className="text-[#e73508] text-base font-medium leading-normal">-2%</p>
-          </div>
-          <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
-            {/* Render BreathTracker inline (replaces placeholder) */}
+      {/* Inline BreathTracker (dynamic stats live inside the component) */}
+      <div className="px-4 py-6">
+        <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
             <div className="w-full">
-              <BreathTracker active={trackingStarted} onStop={() => setTrackingStarted(false)} onError={(err) => {
-                setSensorError(err);
-                setTrackingStarted(false);
-              }} />
-            </div>
-            {/* <div className="flex justify-around">
-              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => (
-                <p key={day} className="text-[#4c809a] text-[13px] font-bold leading-normal tracking-[0.015em]">{day}</p>
-              ))}
-            </div> */}
+              <BreathTracker
+                active={trackingStarted}
+                resetSignal={resetCounter}
+                sensitivity={sensitivity}
+                onStop={() => setTrackingStarted(false)}
+                onError={(err) => {
+                  setSensorError(err);
+                  setTrackingStarted(false);
+                }}
+              />
           </div>
+          {/* weekday summary removed (was placeholder) */}
         </div>
       </div>
     </div>
