@@ -25,6 +25,9 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 		dataLabels: { enabled: false },
 	};
 
+	// UI sensitivity level (1..5) — higher = more sensitive (detect smaller motions)
+	const [sensitivity, setSensitivity] = useState(3);
+
 	const start = async () => {
 		setStatus("Requesting sensor permission...");
 		console.debug("BreathTracker: start() called, active sensor check starting");
@@ -58,7 +61,7 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 		const gravityAlpha = 0.98; // slow low-pass to estimate gravity
 		const motionAlpha = 0.5; // smoothing for motion signal
 		const emaAlpha = 0.05; // for adaptive mean/std estimation
-		const minThreshold = 0.01; // allow very small motions to count
+		const minThreshold = 0.002; // base minimum threshold (lower allows much smaller motions)
 		const hystMultiplier = 1.25; // hysteresis multiplier on std
 		const minInterval = 300; // minimum ms between counts
 
@@ -80,30 +83,35 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
  			gravityRef.current = gravityAlpha * gravityRef.current + (1 - gravityAlpha) * rawAxis;
  			const motion = rawAxis - gravityRef.current;
 
- 			// smooth motion signal
- 			const filtered = motionAlpha * lastFiltered.current + (1 - motionAlpha) * motion;
+			// smooth motion signal
+			const filtered = motionAlpha * lastFiltered.current + (1 - motionAlpha) * motion;
+
+			// apply sensitivity gain (user-controlled). sensitivity defaults to 3 -> gain 1
+			// gain is exponential so higher slider values increase sensitivity significantly
+			const gain = Math.pow(1.6, (sensitivity - 3));
+			const scaled = filtered * gain;
 			// const diff = filtered - lastFiltered.current; // not used directly
 			lastFiltered.current = filtered;
 
- 			// update EMA mean and mean-square for adaptive threshold
- 			emaMeanRef.current = emaAlpha * filtered + (1 - emaAlpha) * emaMeanRef.current;
- 			emaSqRef.current = emaAlpha * (filtered * filtered) + (1 - emaAlpha) * emaSqRef.current;
+			// update EMA mean and mean-square for adaptive threshold (use scaled signal)
+			emaMeanRef.current = emaAlpha * scaled + (1 - emaAlpha) * emaMeanRef.current;
+			emaSqRef.current = emaAlpha * (scaled * scaled) + (1 - emaAlpha) * emaSqRef.current;
  			const variance = Math.max(0, emaSqRef.current - emaMeanRef.current * emaMeanRef.current);
  			const std = Math.sqrt(variance);
  			const adaptiveHyst = Math.max(minThreshold, std * hystMultiplier);
 
  			// push point at a reasonable rate
- 			if (!lastEventTime.current || t - lastEventTime.current > 120) {
- 				setPoints((ps) => {
- 					const next = ps.concat({ x: t, y: Number(filtered.toFixed(4)) });
- 					if (next.length > 400) next.shift();
- 					return next;
- 				});
+			if (!lastEventTime.current || t - lastEventTime.current > 120) {
+				setPoints((ps) => {
+					const next = ps.concat({ x: t, y: Number(scaled.toFixed(4)) });
+					if (next.length > 400) next.shift();
+					return next;
+				});
  				lastEventTime.current = t;
  			}
 
  			// Zero-crossing with hysteresis detection for inhale/exhale
- 			if (filtered > adaptiveHyst && lastDir.current !== 1 && t - (listenerRef.current?.lastCountTime || 0) > minInterval) {
+			if (scaled > adaptiveHyst && lastDir.current !== 1 && t - (listenerRef.current?.lastCountTime || 0) > minInterval) {
  				setBreathIn((v) => v + 1);
  				setBreathInTimes((arr) => {
  					const next = arr.concat(t);
@@ -114,7 +122,7 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
  				listenerRef.current = { ...listenerRef.current, lastCountTime: t };
  			}
 
- 			if (filtered < -adaptiveHyst && lastDir.current !== -1 && t - (listenerRef.current?.lastCountTime || 0) > minInterval) {
+			if (scaled < -adaptiveHyst && lastDir.current !== -1 && t - (listenerRef.current?.lastCountTime || 0) > minInterval) {
  				setBreathOut((v) => v + 1);
  				lastDir.current = -1;
  				listenerRef.current = { ...listenerRef.current, lastCountTime: t };
@@ -206,6 +214,19 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 						)}
 					</div>
 
+					{/* Sensitivity control: lets user amplify very small motions (1=low, 5=very high) */}
+					<div className="mt-3 flex items-center gap-3">
+						<label className="text-sm text-gray-600">Sensitivity</label>
+						<input
+							type="range"
+							min={1}
+							max={5}
+							value={sensitivity}
+							onChange={(e) => setSensitivity(Number(e.target.value))}
+							className="w-48"
+						/>
+						<div className="text-sm text-gray-700">{sensitivity === 1 ? 'Low' : sensitivity === 2 ? 'Med-Low' : sensitivity === 3 ? 'Medium' : sensitivity === 4 ? 'High' : 'Ultra'}</div>
+					</div>
 
 				</div>
 			</div>
