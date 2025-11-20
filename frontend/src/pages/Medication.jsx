@@ -111,9 +111,21 @@ const Medication = () => {
 
   return (
     <div className="layout-content-container flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto">
-      <h2 className="text-[22px] font-bold px-4 pb-3 pt-5">
-        {editId ? "Edit Medicine" : "Add Medicine"}
-      </h2>
+      {/* <h2 className="text-[22px] font-bold px-4 pb-3 pt-5"> */}
+      {/* <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72"> */}
+        {/* {editId ? "Edit Medicine" : "Add Medicine"}</p> */}
+      {/* </h2> */}
+      <div className="flex flex-wrap justify-between gap-3 p-4">
+        <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72">
+          Medication
+        </p>
+      </div>
+
+      <div className="flex flex-wrap justify-between gap-3 p-4">
+        <p className="text-[#0d171b] tracking-light text-[24px] font-bold leading-tight min-w-72">
+          {editId ? "Edit Medicine" : "Add Medicine"}
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
