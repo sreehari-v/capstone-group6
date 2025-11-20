@@ -4,23 +4,58 @@ import Medicine from "../models/Medicine.js";
 const router = express.Router();
 
 // Get all medicines
+// router.get("/", async (req, res) => {
+//   const meds = await Medicine.find();
+//   res.json(meds);
+// });
+
+// Get medicines of logged-in user
 router.get("/", async (req, res) => {
-  const meds = await Medicine.find();
-  res.json(meds);
+  try {
+    const userId = req.query.userId; // sent from frontend
+
+    const meds = await Medicine.find({ user: userId });  
+    res.json(meds);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
+
 // Add new medicine
+// router.post("/", async (req, res) => {
+//   try {
+//     const { name, dosage, schedule, time, beforeFood } = req.body;
+//     const newMed = new Medicine({ name, dosage, schedule, time, beforeFood });
+//     await newMed.save();
+//     res.status(201).json(newMed);
+//   } catch (err) {
+//     console.error("Add Error:", err);
+//     res.status(400).json({ message: err.message });
+//   }
+// });
+
+// Add new medicine for logged-in user
 router.post("/", async (req, res) => {
   try {
-    const { name, dosage, schedule, time, beforeFood } = req.body;
-    const newMed = new Medicine({ name, dosage, schedule, time, beforeFood });
+    const { name, dosage, schedule, time, beforeFood, userId } = req.body;
+
+    const newMed = new Medicine({
+      user: userId,       // attach owner
+      name,
+      dosage,
+      schedule,
+      time,
+      beforeFood,
+    });
+
     await newMed.save();
     res.status(201).json(newMed);
   } catch (err) {
-    console.error("Add Error:", err);
     res.status(400).json({ message: err.message });
   }
 });
+
 
 // Update medicine
 router.put("/:id", async (req, res) => {
