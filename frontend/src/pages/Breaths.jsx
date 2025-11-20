@@ -8,6 +8,7 @@ function Breaths() {
   const [sensorError, setSensorError] = useState(null);
   const [resetCounter, setResetCounter] = useState(0);
   const [everStarted, setEverStarted] = useState(false);
+  const [sensitivity, setSensitivity] = useState(3);
 
   return (
     <div className="flex flex-col max-w-[960px] flex-1 overflow-y-auto">
@@ -41,12 +42,30 @@ function Breaths() {
           {/* Reset appears when paused and user has previously started */}
           {!trackingStarted && everStarted && (
             <button
-              onClick={() => setResetCounter((c) => c + 1)}
+              onClick={() => {
+                setResetCounter((c) => c + 1);
+                // hide the Reset button after clearing so UI reflects the cleared state
+                setEverStarted(false);
+                setTrackingStarted(false);
+              }}
               className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]"
             >
               Reset
             </button>
           )}
+          {/* Global sensitivity control (affects BreathTracker) */}
+          <div className="flex items-center gap-2 ml-2">
+            <label className="text-sm text-gray-600">Sensitivity</label>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={sensitivity}
+              onChange={(e) => setSensitivity(Number(e.target.value))}
+              className="w-36"
+              style={{ accentColor: '#1193d4', background: '#e7eff3', height: 6, borderRadius: 6 }}
+            />
+          </div>
         </div>
       </div>
 
@@ -79,6 +98,7 @@ function Breaths() {
               <BreathTracker
                 active={trackingStarted}
                 resetSignal={resetCounter}
+                sensitivity={sensitivity}
                 onStop={() => setTrackingStarted(false)}
                 onError={(err) => {
                   setSensorError(err);
@@ -86,11 +106,7 @@ function Breaths() {
                 }}
               />
           </div>
-          <div className="flex justify-around">
-            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => (
-              <p key={day} className="text-[#4c809a] text-[13px] font-bold leading-normal tracking-[0.015em]">{day}</p>
-            ))}
-          </div>
+          {/* weekday summary removed (was placeholder) */}
         </div>
       </div>
     </div>
