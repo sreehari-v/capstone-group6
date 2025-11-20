@@ -6,7 +6,7 @@ import { Outlet } from "react-router";
 function AppLayout() {
   return (
     <>
-      <MainNavBar />
+      {/* <MainNavBar /> */}
       <div style={{ paddingTop: "60px" }}>
         <Outlet />
       </div>
