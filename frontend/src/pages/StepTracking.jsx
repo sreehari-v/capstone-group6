@@ -17,11 +17,11 @@ const StepTracking = () => {
     <main className="relative flex min-h-screen w-full flex-col bg-slate-50 overflow-x-hidden pt-24 md:pt-28">
       <div className="layout-container flex h-full grow flex-col" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
         <div className="gap-1 px-6 flex flex-1 justify-center py-5">
-          <div className="layout-content-container flex flex-col w-80">
+          {/* <div className="layout-content-container flex flex-col w-80">
             <div className="flex h-full min-h-[700px] flex-col justify-between bg-slate-50 p-4">
-              {/* <div className="w-80 min-h-[700px]" /> */}
+              <div className="w-80 min-h-[700px]" />
             </div>
-          </div>
+          </div> */}
 
           <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
             <div className="flex flex-wrap justify-between gap-3 p-4">
