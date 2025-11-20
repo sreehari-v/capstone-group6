@@ -1,4 +1,3 @@
-// src/layouts/AppLayout.jsx
 import React from "react";
 import { Outlet } from "react-router"; // or "react-router-dom" if you prefer
 import MainNavBar from "../components/MainNavBar/MainNavBar";

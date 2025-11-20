@@ -111,10 +111,6 @@ const Medication = () => {
 
   return (
     <div className="layout-content-container flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto">
-      {/* <h2 className="text-[22px] font-bold px-4 pb-3 pt-5"> */}
-      {/* <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72"> */}
-        {/* {editId ? "Edit Medicine" : "Add Medicine"}</p> */}
-      {/* </h2> */}
       <div className="flex flex-wrap justify-between gap-3 p-4">
         <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72">
           Medication

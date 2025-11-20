@@ -1,4 +1,3 @@
-// src/components/MainNavBar.jsx
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import "./MainNavBar.css";
@@ -142,12 +141,6 @@ const MainNavBar = () => {
           Donate
         </NavLink>
         
-        {/* <NavLink
-          to="/dashboard"
-          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
-        >
-          Dashboard (test)
-        </NavLink> */}
 
           <NavLink
             to="/dashboard"
