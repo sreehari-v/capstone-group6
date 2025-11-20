@@ -183,7 +183,17 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+import generateRefreshToken from "../utils/generateRefreshToken.js";
 import { sendMail } from "../utils/mailer.js";
+
+// Helper to produce consistent cookie options
+const makeCookieOpts = (isProd, maxAge) => ({
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    maxAge,
+    path: "/",
+});
 
 // Google OAuth
 const oauth2Client = new google.auth.OAuth2(
@@ -248,15 +258,13 @@ export const googleCallback = async (req, res) => {
         }
 
         const token = generateToken(user);
+        const refreshToken = generateRefreshToken(user);
         const isProd = process.env.NODE_ENV === "production";
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: isProd,
-            sameSite: isProd ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        // Access token cookie (short-lived)
+        res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
+        // Refresh token cookie (longer-lived)
+        res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
         const redirectTo =
             process.env.FRONTEND_URL || "http://localhost:5173";
@@ -272,7 +280,9 @@ export const googleCallback = async (req, res) => {
 // 3️⃣ Logout
 // ===========================
 export const logout = (req, res) => {
+    // Clear both access and refresh cookies
     res.clearCookie("token", { path: "/" });
+    res.clearCookie("refreshToken", { path: "/" });
     res.json({ message: "Logged out" });
 };
 
@@ -433,20 +443,42 @@ export const login = async (req, res) => {
         }
 
         const token = generateToken(user);
+        const refreshToken = generateRefreshToken(user);
+        const isProd = process.env.NODE_ENV === "production";
 
-        res.cookie("token", token, {
-            httpOnly: true,
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        // Set access and refresh cookies
+        res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
+        res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
-        res.json({
-            id: user._id,
-            name: user.name,
-            email: user.email,
-        });
+        res.json({ id: user._id, name: user.name, email: user.email });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ message: "Login failed" });
+    }
+};
+
+// ===========================
+// Refresh access token endpoint
+// POST /api/auth/refresh
+// ===========================
+export const refresh = async (req, res) => {
+    try {
+        const r = req.cookies?.refreshToken;
+        if (!r) return res.status(401).json({ message: "No refresh token" });
+
+        const decoded = jwt.verify(r, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
+        if (!decoded?.id) return res.status(401).json({ message: "Invalid refresh token" });
+
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const newToken = generateToken(user);
+        const isProd = process.env.NODE_ENV === "production";
+        res.cookie("token", newToken, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
+
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error("Refresh token error:", err);
+        return res.status(401).json({ message: "Refresh failed" });
     }
 };

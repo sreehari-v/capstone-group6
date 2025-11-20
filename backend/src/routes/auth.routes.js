@@ -24,6 +24,8 @@ import {
   verifyEmailJson,
 } from "../controllers/auth.controller.js";
 
+import { refresh } from "../controllers/auth.controller.js";
+
 const router = express.Router();
 
 router.post("/signup", signup);
@@ -37,5 +39,6 @@ router.get("/google/callback", googleCallback);
 
 router.get("/me", me);
 router.post("/logout", logout);
+router.post("/refresh", refresh);
 
 export default router;
