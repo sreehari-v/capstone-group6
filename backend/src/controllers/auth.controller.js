@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import User from "../models/user.model.js";
 import generateToken from "../utils/generateToken.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 
@@ -90,6 +91,16 @@ export const googleCallback = async (req, res) => {
         // Refresh token cookie (longer-lived)
         res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
+        // Issue CSRF token for double-submit
+        const csrfToken = crypto.randomBytes(24).toString("hex");
+        res.cookie("csrfToken", csrfToken, {
+            httpOnly: false,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
         const redirectTo =
             process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -123,12 +134,24 @@ export const me = async (req, res) => {
         const user = await User.findById(decoded.id).select("-password");
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        // Issue a non-httpOnly CSRF token for double-submit protection
+        const isProd = process.env.NODE_ENV === "production";
+        const csrfToken = crypto.randomBytes(24).toString("hex");
+        res.cookie("csrfToken", csrfToken, {
+            httpOnly: false,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
         res.json({
             id: user._id,
             name: user.name,
             email: user.email,
             avatar: user.avatar,
             authProvider: user.authProvider,
+            csrfToken,
         });
     } catch (err) {
         console.error("me error:", err);
@@ -274,7 +297,17 @@ export const login = async (req, res) => {
         res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
         res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
-        res.json({ id: user._id, name: user.name, email: user.email });
+        // Issue a non-httpOnly CSRF token for double-submit protection
+        const csrfToken = crypto.randomBytes(24).toString("hex");
+        res.cookie("csrfToken", csrfToken, {
+            httpOnly: false,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
+        res.json({ id: user._id, name: user.name, email: user.email, csrfToken });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ message: "Login failed" });
@@ -300,7 +333,17 @@ export const refresh = async (req, res) => {
         const isProd = process.env.NODE_ENV === "production";
         res.cookie("token", newToken, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
 
-        return res.json({ ok: true });
+        // rotate csrf token as well
+        const csrfToken = crypto.randomBytes(24).toString("hex");
+        res.cookie("csrfToken", csrfToken, {
+            httpOnly: false,
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            path: "/",
+        });
+
+        return res.json({ ok: true, csrfToken });
     } catch (err) {
         console.error("Refresh token error:", err);
         return res.status(401).json({ message: "Refresh failed" });
