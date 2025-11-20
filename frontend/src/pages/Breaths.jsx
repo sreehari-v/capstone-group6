@@ -1,6 +1,15 @@
-import React from 'react'
+import React, { useState } from 'react'
+import BreathTracker from '../components/BreathTracker/BreathTracker'
+import BreathStartModal from '../components/BreathTracker/BreathStartModal'
 
 function Breaths() {
+  const [showStartModal, setShowStartModal] = useState(false);
+  const [trackingStarted, setTrackingStarted] = useState(false);
+  const [sensorError, setSensorError] = useState(null);
+  const [resetCounter, setResetCounter] = useState(0);
+  const [everStarted, setEverStarted] = useState(false);
+  const [sensitivity, setSensitivity] = useState(3);
+
   return (
     <div className="flex flex-col max-w-[960px] flex-1 overflow-y-auto">
       {/* Page header */}
@@ -10,74 +19,96 @@ function Breaths() {
         </p>
       </div>
 
-      {/* Buttons */}
+      {/* Single start/pause button (Reset shown when paused) */}
       <div className="flex justify-stretch px-4 py-3">
-        <div className="flex flex-1 gap-3 flex-wrap justify-start">
-          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]">
-            Start Tracking
+        <div className="flex flex-1 gap-3 flex-wrap justify-start items-center">
+          <button
+            onClick={() => {
+              if (trackingStarted) {
+                // pause
+                setTrackingStarted(false);
+              } else if (everStarted) {
+                // resume without modal
+                setTrackingStarted(true);
+              } else {
+                // show start modal
+                setShowStartModal(true);
+              }
+            }}
+            className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#1193d4] text-slate-50 text-sm font-bold leading-normal tracking-[0.015em]"
+          >
+            {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
           </button>
-          <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]">
-            Guided Tracking
-          </button>
-        </div>
-      </div>
-
-      {/* Breathing Rate */}
-      <h3 className="text-[#0d171b] text-lg font-bold leading-tight tracking-[-0.015em] px-4 pb-2 pt-4">
-        Breathing Rate
-      </h3>
-      <div className="flex flex-wrap gap-4 px-4 py-6">
-        <div className="flex min-w-72 flex-1 flex-col gap-2">
-          <p className="text-[#0d171b] text-base font-medium leading-normal">
-            Breathing Rate (BPM)
-          </p>
-          <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight truncate">
-            16 BPM
-          </p>
-          <div className="flex gap-1">
-            <p className="text-[#4c809a] text-base font-normal leading-normal">
-              Last 7 Days
-            </p>
-            <p className="text-[#e73508] text-base font-medium leading-normal">-2%</p>
-          </div>
-          <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
-            {/* Placeholder SVG / Chart */}
-            <svg
-              width="100%"
-              height="148"
-              viewBox="-3 0 478 150"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              preserveAspectRatio="none"
+          {/* Reset appears when paused and user has previously started */}
+          {!trackingStarted && everStarted && (
+            <button
+              onClick={() => {
+                setResetCounter((c) => c + 1);
+                // hide the Reset button after clearing so UI reflects the cleared state
+                setEverStarted(false);
+                setTrackingStarted(false);
+              }}
+              className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-[#e7eff3] text-[#0d171b] text-sm font-bold leading-normal tracking-[0.015em]"
             >
-              <path
-                d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25V149H326.769H0V109Z"
-                fill="url(#paint0_linear)"
-              ></path>
-              <path
-                d="M0 109C18.1538 109 18.1538 21 36.3077 21C54.4615 21 54.4615 41 72.6154 41C90.7692 41 90.7692 93 108.923 93C127.077 93 127.077 33 145.231 33C163.385 33 163.385 101 181.538 101C199.692 101 199.692 61 217.846 61C236 61 236 45 254.154 45C272.308 45 272.308 121 290.462 121C308.615 121 308.615 149 326.769 149C344.923 149 344.923 1 363.077 1C381.231 1 381.231 81 399.385 81C417.538 81 417.538 129 435.692 129C453.846 129 453.846 25 472 25"
-                stroke="#4c809a"
-                strokeWidth="3"
-                strokeLinecap="round"
-              ></path>
-              <defs>
-                <linearGradient id="paint0_linear" x1="236" y1="1" x2="236" y2="149" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#e7eff3" />
-                  <stop offset="1" stopColor="#e7eff3" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <div className="flex justify-around">
-              {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day => (
-                <p key={day} className="text-[#4c809a] text-[13px] font-bold leading-normal tracking-[0.015em]">{day}</p>
-              ))}
-            </div>
+              Reset
+            </button>
+          )}
+          {/* Global sensitivity control (affects BreathTracker) */}
+          <div className="flex items-center gap-2 ml-2">
+            <label className="text-sm text-gray-600">Sensitivity</label>
+            <input
+              type="range"
+              min={1}
+              max={5}
+              value={sensitivity}
+              onChange={(e) => setSensitivity(Number(e.target.value))}
+              className="w-36"
+              style={{ accentColor: '#1193d4', background: '#e7eff3', height: 6, borderRadius: 6 }}
+            />
           </div>
         </div>
       </div>
 
-      {/* You can continue converting the remaining sections similarly */}
-      {/* Breathing Consistency, Breathing Patterns, Improvement Over Time */}
+  {/* Breath start modal (instructions). When user presses Start in the modal,
+      the inline tracker below will become active. */}
+  <BreathStartModal
+    open={showStartModal}
+    onStart={() => { setShowStartModal(false); setTrackingStarted(true); setEverStarted(true); }}
+    onCancel={() => setShowStartModal(false)}
+  />
+
+  {/* Sensor error modal */}
+  {sensorError && (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
+        <h3 className="text-lg font-bold mb-2">Sensor unavailable</h3>
+        <p className="mb-4">{sensorError.message || 'Motion sensor not available or permission denied.'}</p>
+        <div className="flex justify-end">
+          <button onClick={() => setSensorError(null)} className="px-3 py-2 bg-[#1193d4] text-white rounded">OK</button>
+        </div>
+      </div>
+    </div>
+  )}
+
+
+      {/* Inline BreathTracker (dynamic stats live inside the component) */}
+      <div className="px-4 py-6">
+        <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
+            <div className="w-full">
+              <BreathTracker
+                active={trackingStarted}
+                resetSignal={resetCounter}
+                sensitivity={sensitivity}
+                onStop={() => setTrackingStarted(false)}
+                onError={(err) => {
+                  setSensorError(err);
+                  setTrackingStarted(false);
+                }}
+              />
+          </div>
+          {/* weekday summary removed (was placeholder) */}
+        </div>
+      </div>
     </div>
   );
 }

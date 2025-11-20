@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import donationRoutes from "./routes/donationRoutes.js";
 
 // DB + Routes
 import connectDB from "./config/db.js";
@@ -29,6 +30,7 @@ connectDB();
 // -----------------------------
 app.use(express.json());
 app.use(cookieParser());
+app.use("/api/donations", donationRoutes);
 
 // CORS setup
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
