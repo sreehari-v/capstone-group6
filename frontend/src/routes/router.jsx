@@ -9,6 +9,7 @@ import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
 import VerifyEmail from "../pages/VerifyEmail";
 import DashboardLayout from "../layouts/DashboardLayout";
+import ProtectedRoute from "../components/ProtectedRoute";
 import DashBoard from "../pages/DashBoard";
 import StepTracking from "../pages/StepTracking";
 import Breaths from "../pages/Breaths";
@@ -34,7 +35,11 @@ const router = createBrowserRouter([
   { path: "/register", element: <SignupPage /> },
   {
     path: "/dashboard",
-    element: <DashboardLayout />,
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <DashBoard /> },
       { path: "steps", element: <StepTracking /> },

@@ -147,7 +147,9 @@ const Medication = () => {
   };
 
   return (
-    <div className="layout-content-container flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto">
+    <div
+      className="layout-content-container flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto"
+    >
       <div className="flex flex-wrap justify-between gap-3 p-4">
         <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72">
           Medication

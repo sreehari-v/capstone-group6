@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import csrfProtection from "./middleware/csrfMiddleware.js";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -27,6 +28,8 @@ connectDB();
 //  Middlewares
 app.use(express.json());
 app.use(cookieParser());
+// CSRF double-submit protection (checks X-CSRF-Token against csrfToken cookie)
+app.use(csrfProtection);
 app.use("/api/donations", donationRoutes);
 
 // CORS setup
