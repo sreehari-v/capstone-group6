@@ -217,7 +217,7 @@ const Medication = () => {
         </div>
 
         <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <p className="pb-2 font-medium w-full">Take Before Food?*</p>
+          <p className="pb-2 font-medium w-full">Take Before Food?</p>
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
