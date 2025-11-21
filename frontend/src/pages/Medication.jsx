@@ -14,6 +14,7 @@ const Medication = () => {
   });
   const [editId, setEditId] = useState(null);
 
+  const user = JSON.parse(localStorage.getItem("user"));
   useEffect(() => {
     fetchMedicines();
   }, []);
@@ -33,12 +34,27 @@ const Medication = () => {
     setFilteredMeds(sorted);
   }, [sortFilter, medicines]);
 
-  const fetchMedicines = async () => {
+  // const fetchMedicines = async () => {
+  //   try {
+  //     const res = await axios.get("http://localhost:5000/api/medicines");
+  //     setMedicines(res.data);
+  //   } catch (error) {
+  //     console.error("Fetch error:", error);
+  //   }
+  // };
+
+    const fetchMedicines = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/medicines");
+      const res = await axios.get("http://localhost:5000/api/medicines", {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
       setMedicines(res.data);
-    } catch (error) {
-      console.error("Fetch error:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -69,10 +85,25 @@ const Medication = () => {
 
     try {
       if (editId) {
-        await axios.put(`http://localhost:5000/api/medicines/${editId}`, form);
+        await axios.put(`http://localhost:5000/api/medicines/${editId}`,
+        form,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+        );
         setEditId(null);
       } else {
-        await axios.post("http://localhost:5000/api/medicines", form);
+        await axios.post("http://localhost:5000/api/medicines", 
+        form,
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
       }
       setForm({
         name: "",
@@ -91,7 +122,13 @@ const Medication = () => {
     if (!window.confirm("Are you sure you want to delete this medicine?"))
       return;
     try {
-      await axios.delete(`http://localhost:5000/api/medicines/${id}`);
+      await axios.delete(`http://localhost:5000/api/medicines/${id}`,
+      {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       fetchMedicines();
     } catch (error) {
       console.error("Delete error:", error);

@@ -1,5 +1,6 @@
 import express from "express";
 import Medicine from "../models/Medicine.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -10,17 +11,14 @@ const router = express.Router();
 // });
 
 // Get medicines of logged-in user
-router.get("/", async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
-    const userId = req.query.userId; // sent from frontend
-
-    const meds = await Medicine.find({ user: userId });  
+    const meds = await Medicine.find({ user: req.user._id });
     res.json(meds);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
-
 
 // Add new medicine
 // router.post("/", async (req, res) => {
@@ -36,18 +34,18 @@ router.get("/", async (req, res) => {
 // });
 
 // Add new medicine for logged-in user
-router.post("/", async (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
     const { name, dosage, schedule, time, beforeFood, userId } = req.body;
 
     const newMed = new Medicine({
-      user: userId,       // attach owner
+      user: req.user._id,
       name,
       dosage,
       schedule,
       time,
       beforeFood,
-    });
+  });
 
     await newMed.save();
     res.status(201).json(newMed);

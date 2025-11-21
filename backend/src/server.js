@@ -20,14 +20,11 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// -----------------------------
 // Connect to MongoDB
-// -----------------------------
+
 connectDB();
 
-// -----------------------------
 //  Middlewares
-// -----------------------------
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/donations", donationRoutes);
@@ -41,9 +38,7 @@ app.use(
   })
 );
 
-// -----------------------------
 // API Routes
-// -----------------------------
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 
@@ -66,9 +61,7 @@ app.get("/api", (req, res) => {
 // Health route
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-// -----------------------------
 //  Start the server
-// -----------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () =>
   console.log(` Server running on http://localhost:${PORT}`)

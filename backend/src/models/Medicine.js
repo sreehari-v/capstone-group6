@@ -20,7 +20,7 @@
 import mongoose from "mongoose";
 
 const medicineSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },   // <-- ADD THIS
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   name: { type: String, required: true },
   dosage: { type: String, required: true },
   schedule: { 
