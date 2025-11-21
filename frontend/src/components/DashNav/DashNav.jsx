@@ -1,5 +1,6 @@
 import React from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 const DashNav = () => {
   return (
@@ -7,7 +8,8 @@ const DashNav = () => {
       className="
         bg-slate-50 p-4
         w-full md:w-80
-        md:min-h-screen
+        md:h-screen
+        overflow-y-auto
         border-b md:border-b-0 md:border-r border-slate-200
         flex flex-col gap-4
       "
@@ -90,35 +92,16 @@ const DashNav = () => {
         </div>
       </div>
 
-      {/* FOOTER LINKS */}
-      {/* Desktop: bottom of sidebar */}
+      {/* FOOTER: Logout */}
       <div className="mt-auto hidden md:flex flex-col gap-2">
-        <NavItem
-          label="Help & FAQ"
-          iconClass="fas fa-question-circle"
-          to="/dashboard/help"
-        />
-        <NavItem
-          label="Feedback"
-          iconClass="fas fa-comment-dots"
-          to="/dashboard/feedback"
-        />
+        <LogoutButton />
       </div>
 
       {/* Mobile: below main nav row */}
       <div className="md:hidden flex gap-2 flex-wrap pt-2 border-t border-slate-200 mt-2">
-        <NavItem
-          label="Help"
-          iconClass="fas fa-question-circle"
-          to="/dashboard/help"
-          compact
-        />
-        <NavItem
-          label="Feedback"
-          iconClass="fas fa-comment-dots"
-          to="/dashboard/feedback"
-          compact
-        />
+        <div className="w-full">
+          <LogoutButton compact />
+        </div>
       </div>
     </aside>
   );
@@ -146,6 +129,36 @@ const NavItem = ({ label, iconClass, to, end, compact }) => {
       <i className={`${iconClass} text-[#0d171b] text-sm`}></i>
       <p className="font-medium">{label}</p>
     </NavLink>
+  );
+};
+
+const LogoutButton = ({ compact }) => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // ignore
+    }
+    navigate('/login');
+  };
+
+  return (
+    <button
+      onClick={handleLogout}
+      className={
+        `w-full flex items-center justify-center gap-3 py-2 px-3 rounded-md transition-colors ` +
+        (compact
+          ? "bg-red-600 text-white text-sm"
+          : "bg-red-600 hover:bg-red-700 text-white font-medium")
+      }
+      aria-label="Logout"
+    >
+      <i className="fas fa-sign-out-alt"></i>
+      {!compact && <span>Logout</span>}
+    </button>
   );
 };
 

@@ -5,11 +5,11 @@ import User from "../models/user.model.js";
 export const protect = async (req, res, next) => {
   let token;
 
-  // Token can come from Authorization header OR cookies
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-    token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies?.token) {
+  // Prefer token from secure httpOnly cookie; fall back to Authorization header if present
+  if (req.cookies?.token) {
     token = req.cookies.token;
+  } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
   }
 
   if (!token) {

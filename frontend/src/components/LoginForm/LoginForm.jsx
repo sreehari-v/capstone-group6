@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import OAuth from "../../OAuth";
 import axios from "axios";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { fetchMe } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,6 +23,9 @@ export default function LoginForm() {
         { email, password },
         { withCredentials: true }
       );
+
+      // refresh auth state
+  try { await fetchMe(); } catch { /* ignore */ }
 
       navigate("/dashboard");
     } catch (err) {
