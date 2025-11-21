@@ -45,6 +45,9 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 
+// Start reminder scheduler
+import "./scheduler/medicineReminder.js";
+
 // Test route
 app.get("/", (req, res) => {
   res.send("<h1>Server running successfully</h1>");
