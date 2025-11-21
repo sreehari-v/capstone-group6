@@ -37,7 +37,20 @@ const LoginPage = () => {
       </div>
 
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 overflow-y-auto bg-white dark:bg-slate-900">
-        <LoginForm />
+        <div className="max-w-md w-full">
+          <LoginForm />
+
+          <p className="mt-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
+            Don't have an account yet?{" "}
+            <Link
+              to="/register"
+              className="text-primary font-medium hover:underline"
+            >
+              sign up
+            </Link>
+            .
+          </p>
+        </div>
       </div>
     </div>
   );

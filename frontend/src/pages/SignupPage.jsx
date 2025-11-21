@@ -35,6 +35,14 @@ export default function SignupPage() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 overflow-y-auto bg-card-light dark:bg-card-dark">
         <div className="max-w-md w-full">
           <SignupForm />
+
+          <p className="mt-4 text-center text-sm text-text-secondary-light dark:text-text-secondary-dark">
+            Already have an account?{' '}
+            <Link to="/login" className="text-primary font-medium hover:underline">
+              Log in here
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </div>
