@@ -14,7 +14,7 @@ const Medication = () => {
   });
   const [editId, setEditId] = useState(null);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  // const user = JSON.parse(localStorage.getItem("user"));
   useEffect(() => {
     fetchMedicines();
   }, []);
