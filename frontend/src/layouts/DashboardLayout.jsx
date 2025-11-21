@@ -4,7 +4,7 @@ import DashNav from "../components/DashNav/DashNav";
 
 function DashboardLayout() {
   return (
-    <div className="min-h-screen bg-background-light flex">
+    <div className="h-screen bg-background-light flex">
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 min-h-0">
           {/* Sidebar nav (DashNav) */}
