@@ -80,7 +80,7 @@ const MainNavBar = () => {
         <div className="hidden md:flex items-center gap-4">
           <NavLink to="/register">
             <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-9 px-4 bg-[var(--primary-color)] text-white text-sm font-bold shadow-lg hover:bg-[#2563eb] transition-colors">
-              <span className="truncate">Sign Up</span>
+              <span className="truncate">Get Started</span>
             </button>
           </NavLink>
         </div>
@@ -140,7 +140,7 @@ const MainNavBar = () => {
         >
           Donate
         </NavLink>
-        
+
 
           <NavLink
             to="/dashboard"
