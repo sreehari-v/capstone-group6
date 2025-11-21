@@ -21,7 +21,7 @@ export default function LoginForm() {
     setIsSubmitting(true);
     try {
       await axios.post(
-        `${import.meta.env.REACT_APP_API_BASE || "http://localhost:5000"}/api/auth/login`,
+        `${import.meta.env.VITE_API_BASE || "http://localhost:5001"}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );
