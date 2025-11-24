@@ -18,6 +18,18 @@ import medicineRoutes from "./routes/medicineRoutes.js";
 // Load environment variables
 dotenv.config();
 
+// Improve dev-time diagnostics: log uncaught exceptions and rejections so nodemon shows the cause
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception (server):', err && err.stack ? err.stack : err);
+  // exit after a short delay to allow logs to flush; nodemon will restart if configured
+  setTimeout(() => process.exit(1), 100);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  setTimeout(() => process.exit(1), 100);
+});
+
 const app = express();
 
 // Required for __dirname in ES Modules
@@ -73,8 +85,9 @@ if (fs.existsSync(FRONTEND_DIST)) {
   app.use(express.static(FRONTEND_DIST));
 
   // Serve index.html for non-API GET requests (SPA fallback)
-  app.get("*", (req, res, next) => {
-    // skip API and socket routes
+  // Use a generic middleware instead of a string route so we avoid path-to-regexp parsing issues.
+  app.use((req, res, next) => {
+    // only handle GETs and skip API/socket paths
     if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
       return next();
     }
