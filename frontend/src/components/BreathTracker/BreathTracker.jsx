@@ -202,7 +202,8 @@ export default function BreathTracker({
       });
 
       // Listener joined a session
-      socketRef.current.on("joined", ({ code }) => {
+      // Listener joined a session
+      socketRef.current.on("joined", ({ code, producerId }) => {
         sessionCodeRef.current = code;
         isProducerRef.current = false;
         isListeningRef.current = true;
@@ -214,8 +215,8 @@ export default function BreathTracker({
           joinTimeoutRef.current = null;
         }
 
-        // Immediately request snapshot from producer for initial state
-        socketRef.current.emit("request_snapshot", { to: code });
+        // REQUEST SNAPSHOT: send producer's socketId, not code
+        socketRef.current.emit("request_snapshot", { to: producerId });
       });
 
       socketRef.current.on("join_error", ({ message }) => {
