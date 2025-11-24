@@ -53,6 +53,7 @@ export default function BreathTracker({
     const interval = setInterval(() => {
       const buf = incomingBufferRef.current;
       if (!buf || buf.length === 0) return;
+      console.debug(`BreathTracker: flushing buffer (${buf.length})`);
       // consume buffer
       incomingBufferRef.current = [];
 
@@ -215,6 +216,7 @@ export default function BreathTracker({
           joinTimeoutRef.current = null;
         }
 
+        console.debug("BreathTracker: joined session", { code, producerId });
         // REQUEST SNAPSHOT: send producer's socketId, not code
         socketRef.current.emit("request_snapshot", { to: producerId });
       });
@@ -240,6 +242,7 @@ export default function BreathTracker({
       // ------------------- MAIN DATA RECEIVER -------------------
       socketRef.current.on("breath_data", (payload) => {
         if (!payload) return;
+        console.debug("BreathTracker: breath_data recv", payload && { t: payload.t, breathIn: payload.breathIn, bpm: payload.bpm });
         // Always push into buffer regardless of isListeningRef
         incomingBufferRef.current.push(payload);
       });
