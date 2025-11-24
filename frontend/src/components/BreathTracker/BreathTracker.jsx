@@ -27,6 +27,7 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	const emaMeanRef = useRef(0);
 	const emaSqRef = useRef(0);
 	const listenerRef = useRef(null);
+	const isListeningRef = useRef(false);
 	const startupTimerRef = useRef(null);
 	const socketRef = useRef(null);
 	const sessionCodeRef = useRef(null);
@@ -88,19 +89,20 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			});
 
 				socketRef.current.on("joined", ({ code }) => {
-				// this device joined as listener
-				sessionCodeRef.current = code;
-				isProducerRef.current = false;
+					// this device joined as listener
+					sessionCodeRef.current = code;
+					isProducerRef.current = false;
+					isListeningRef.current = true;
 					setStatus(`Connected to ${code} — showing remote data`);
 					setJoinPending(false);
 					if (joinTimeoutRef.current) {
 						clearTimeout(joinTimeoutRef.current);
 						joinTimeoutRef.current = null;
 					}
-				setBpm((b) => b);
-			});
+				});
 
 				socketRef.current.on("join_error", ({ message }) => {
+					isListeningRef.current = false;
 					setJoinPending(false);
 					if (joinTimeoutRef.current) {
 						clearTimeout(joinTimeoutRef.current);
@@ -109,9 +111,17 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 					setStatus(message || "Session not found or full");
 				});
 
+				// session ended (producer disconnected or closed)
+				socketRef.current.on("session_ended", ({ code }) => {
+					if (sessionCodeRef.current !== code) return;
+					isListeningRef.current = false;
+					sessionCodeRef.current = null;
+					setStatus("Remote session ended");
+				});
+
 			socketRef.current.on("breath_data", (payload) => {
-				// only apply when this device is a listener
-				if (isProducerRef.current) return;
+				// only apply when this device is an active listener
+				if (!isListeningRef.current) return;
 				if (!payload) return;
 				// push payload into a small buffer — we'll batch UI updates to avoid jank
 				incomingBufferRef.current.push(payload);
