@@ -136,6 +136,10 @@ io.on("connection", (socket) => {
     io.to(s.producerId).emit("listener_joined", { listenerId: socket.id, listenerCount: s.listeners.size });
     // request snapshot from producer to send initial state to this listener
     io.to(s.producerId).emit("request_snapshot", { to: socket.id });
+    // if server already has a recent snapshot from producer, send it immediately
+    if (s.lastSnapshot) {
+      socket.emit("session_snapshot", s.lastSnapshot);
+    }
     console.log(`ws: ${socket.id} joined session ${code}`);
   });
 
@@ -151,6 +155,18 @@ io.on("connection", (socket) => {
     // payload should include { code, point?, breathIn?, breathOut?, bpm? }
     const { code } = payload || {};
     if (!code) return;
+    // store last snapshot if this is from the producer
+    const s = sessions.get(code);
+    if (s && s.producerId === socket.id) {
+      // keep a small shallow copy (avoid big arrays)
+      s.lastSnapshot = {
+        breathIn: payload.breathIn,
+        breathOut: payload.breathOut,
+        bpm: payload.bpm,
+        point: payload.point,
+        t: payload.t,
+      };
+    }
     // broadcast to all others in room
     socket.to(code).emit("breath_data", payload);
   });

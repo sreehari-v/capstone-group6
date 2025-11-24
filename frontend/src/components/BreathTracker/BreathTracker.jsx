@@ -70,7 +70,7 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 					return merged;
 				});
 			}
-		}, 200);
+		}, 100);
 		return () => clearInterval(interval);
 	}, []);
 
@@ -120,10 +120,31 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			// session snapshot (initial state)
 			socketRef.current.on("session_snapshot", (snapshot) => {
 				if (!snapshot) return;
-				if (snapshot.breathIn) setBreathIn(snapshot.breathIn);
-				if (snapshot.breathOut) setBreathOut(snapshot.breathOut);
-				if (snapshot.bpm) setBpm(Math.round(snapshot.bpm));
-				if (snapshot.points && Array.isArray(snapshot.points)) setPoints(snapshot.points.slice(-400));
+				// update refs immediately so any subsequent request_snapshot uses latest
+				if (typeof snapshot.breathIn === 'number') {
+					setBreathIn(snapshot.breathIn);
+					breathInRef.current = snapshot.breathIn;
+				}
+				if (typeof snapshot.breathOut === 'number') {
+					setBreathOut(snapshot.breathOut);
+					breathOutRef.current = snapshot.breathOut;
+				}
+				if (typeof snapshot.bpm === 'number') {
+					setBpm(Math.round(snapshot.bpm));
+					bpmRef.current = snapshot.bpm;
+				}
+				if (snapshot.points && Array.isArray(snapshot.points)) {
+					setPoints(snapshot.points.slice(-400));
+					pointsRef.current = snapshot.points.slice(-400);
+				} else if (snapshot.point) {
+					// append single point
+					setPoints((ps) => {
+						const next = ps.concat({ x: snapshot.point.x || snapshot.t, y: snapshot.point.y || 0 });
+						if (next.length > 400) next.shift();
+						pointsRef.current = next;
+						return next;
+					});
+				}
 			});
 
 			// producer asked to provide snapshot for a specific listener
