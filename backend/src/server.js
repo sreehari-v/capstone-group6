@@ -132,6 +132,7 @@ io.on("connection", (socket) => {
     socket.join(code);
     // notify listener that join succeeded
     socket.emit("joined", { code, producerId: s.producerId, listenerCount: s.listeners.size });
+    console.log(`ws: listener ${socket.id} joined session ${code}, producer=${s.producerId}, listeners=${s.listeners.size}`);
     // notify producer that a new listener joined and request a snapshot
     io.to(s.producerId).emit("listener_joined", { listenerId: socket.id, listenerCount: s.listeners.size });
     // request snapshot from producer to send initial state to this listener
@@ -166,9 +167,11 @@ io.on("connection", (socket) => {
         point: payload.point,
         t: payload.t,
       };
+      console.log(`ws: received breath_data from producer ${socket.id} for ${code} bpm=${payload.bpm} point=${payload.point?true:false}`);
     }
     // broadcast to all others in room
     socket.to(code).emit("breath_data", payload);
+    console.log(`ws: broadcasted breath_data to room ${code}`);
   });
 
   socket.on("session_snapshot", ({ to, snapshot }) => {
