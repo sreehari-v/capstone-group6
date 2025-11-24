@@ -21,7 +21,7 @@ export default function LoginForm() {
     setIsSubmitting(true);
     try {
       await axios.post(
-        `${import.meta.env.VITE_API_BASE || "http://localhost:5001"}/api/auth/login`,
+        `${import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com"}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );

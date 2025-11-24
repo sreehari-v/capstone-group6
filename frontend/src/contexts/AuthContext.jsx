@@ -8,7 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [csrfToken, setCsrfToken] = useState(null);
 
-  const apiBase = import.meta.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const apiBase = import.meta.env.VITE_API_BASE || 'https://careon-backend-rzbf.onrender.com';
 
   const fetchMe = async () => {
     setLoading(true);

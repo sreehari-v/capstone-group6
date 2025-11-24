@@ -41,7 +41,7 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 
 	// Initialize socket connection once
 	useEffect(() => {
-		const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+		const API_BASE = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
 		try {
 			socketRef.current = ioClient(API_BASE, { withCredentials: true });
 			socketRef.current.on("connect", () => console.debug("ws: connected", socketRef.current.id));

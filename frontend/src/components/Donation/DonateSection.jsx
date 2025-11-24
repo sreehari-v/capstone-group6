@@ -97,7 +97,7 @@ const DonateSection = () => {
               const details = await actions.order.capture();
 
               // Save donation in backend
-              await fetch("http://localhost:5000/api/donations", {
+              await fetch(`${import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com"}/api/donations`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
