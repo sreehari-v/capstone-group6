@@ -34,11 +34,22 @@ app.use(cookieParser());
 app.use(csrfProtection);
 app.use("/api/donations", donationRoutes);
 
-// CORS setup
+// CORS setup - allow one or more frontend origins configured via env
+// Set FRONTEND_URL to the production origin (e.g. https://creon-frontend.onrender.com)
+// or FRONTEND_URLS to a comma-separated list of allowed origins.
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const FRONTEND_URLS = (process.env.FRONTEND_URLS || "").split(",").map((s) => s.trim()).filter(Boolean);
+const allowedOrigins = new Set([FRONTEND_URL, ...FRONTEND_URLS]);
+
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+      // allow requests with no origin (like curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      console.warn(`CORS: blocked origin ${origin} — allowed: ${Array.from(allowedOrigins).join(",")}`);
+      return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true,
   })
 );
