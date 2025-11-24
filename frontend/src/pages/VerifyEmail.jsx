@@ -17,7 +17,7 @@ const VerifyEmail = () => {
 
     const verify = async () => {
       try {
-        const base = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+  const base = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
         const res = await fetch(`${base}/api/auth/verify-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
