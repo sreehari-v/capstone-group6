@@ -8,6 +8,11 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Frontend URL selection:
+// Local dev: set FRONTEND_URL in .env to http://localhost:5173 (or uncomment the sample in backend/.env)
+// Production: set FRONTEND_URL to your production client URL (e.g. https://prince-pr.com)
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5173" : process.env.FRONTEND_URL);
+
 import generateRefreshToken from "../utils/generateRefreshToken.js";
 import { sendMail } from "../utils/mailer.js";
 
@@ -101,10 +106,7 @@ export const googleCallback = async (req, res) => {
             path: "/",
         });
 
-        const redirectTo =
-            process.env.FRONTEND_URL || "http://localhost:5173";
-
-        res.redirect(`${redirectTo}/dashboard`);
+        res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (err) {
         console.error("Google callback error:", err);
         res.status(500).send("Authentication failed");
@@ -187,7 +189,7 @@ export const signup = async (req, res) => {
             expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
         });
 
-        const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+    const verifyUrl = `${FRONTEND_URL}/verify-email?token=${verifyToken}`;
 
         const html = `<p>Hi ${user.name},</p>
         <p>Welcome to CareOn! Please verify your email by clicking the link below:</p>
@@ -231,8 +233,7 @@ export const verifyEmail = async (req, res) => {
         await user.save();
 
         // Redirect to frontend with a flag
-        const redirectTo = process.env.FRONTEND_URL || "http://localhost:5173";
-        return res.redirect(`${redirectTo}/login?verified=1`);
+    return res.redirect(`${FRONTEND_URL}/login?verified=1`);
     } catch (err) {
         console.error("Verify email error:", err);
         return res.status(400).send("Token invalid or expired");

@@ -35,7 +35,10 @@ app.use(csrfProtection);
 app.use("/api/donations", donationRoutes);
 
 // CORS setup
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+// Local dev example (uncomment in .env or here if you need to force localhost):
+// const LOCAL_FRONTEND = "http://localhost:5173";
+// Production FRONTEND_URL should be set in backend/.env (e.g. https://prince-pr.com)
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? "http://localhost:5173" : "");
 
 // In development allow the dev server origin(s). Allow any origin when running locally to make
 // frontend dev on different ports (5173/5174) convenient. In production restrict to FRONTEND_URL.
@@ -84,7 +87,7 @@ const server = http.createServer(app);
 // Setup Socket.IO
 const io = new IOServer(server, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: process.env.NODE_ENV !== 'production' ? true : FRONTEND_URL,
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -185,4 +188,11 @@ io.on("connection", (socket) => {
 
 //  Start the server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(` Server running on http://localhost:${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(` - Dev frontend should be reachable at http://<your-host-ip>:5173 or :5174 (Vite)`);
+  } else {
+    console.log(` - Frontend origin configured: ${FRONTEND_URL}`);
+  }
+});
