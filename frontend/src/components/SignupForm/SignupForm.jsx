@@ -12,7 +12,7 @@ export default function SignupForm() {
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
+  const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
   const handleSubmit = async (e) => {
     e.preventDefault();

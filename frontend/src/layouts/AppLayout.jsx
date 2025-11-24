@@ -1,27 +1,9 @@
-import React, { useEffect } from "react";
-import { Outlet, useNavigate, useLocation } from "react-router"; // or "react-router-dom"
+import React from "react";
+import { Outlet } from "react-router"; // or "react-router-dom" if you prefer
 import MainNavBar from "../components/MainNavBar/MainNavBar";
 import MainFooter from "../components/MainFooter/MainFooter";
 
 const AppLayout = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // If the server redirected to `/?redirect=/some/path`, handle it on client
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(location.search);
-      const redirect = params.get("redirect");
-      if (redirect) {
-        // replace so the redirect param is not kept in history
-        navigate(redirect, { replace: true });
-      }
-    } catch {
-      // ignore malformed redirects
-    }
-    // Only run on initial mount / when search changes
-  }, [location.search, navigate]);
-
   return (
     <div className="min-h-screen bg-background-light">
       {/* Top navbar */}

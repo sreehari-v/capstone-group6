@@ -2,7 +2,7 @@ import React from "react";
 
 const OAuth = () => {
   const handleGoogleClick = () => {
-  const backendURL = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
+    const backendURL = import.meta.env.VITE_API_BASE || "http://localhost:5000";
     window.location.href = `${backendURL}/api/auth/google`;
   };
 

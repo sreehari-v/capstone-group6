@@ -38,10 +38,45 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	const [__unused_producerId, __unused_setProducerId] = useState(null);
 	const broadcastRef = useRef(null);
 	const [joinCode, setJoinCode] = useState("");
+	const [joinPending, setJoinPending] = useState(false);
+	const joinTimeoutRef = useRef(null);
+	const incomingBufferRef = useRef([]); // buffer incoming breath_data on listeners
+
+	// periodically flush incoming buffer to update UI in batches (reduces re-renders)
+	useEffect(() => {
+		const interval = setInterval(() => {
+			const buf = incomingBufferRef.current;
+			if (!buf || buf.length === 0) return;
+			// consume buffer
+			incomingBufferRef.current = [];
+
+			// take the last payload as authoritative for aggregate counters
+			const last = buf[buf.length - 1];
+
+			// update counts and bpm once per flush
+			if (typeof last.breathIn === 'number') setBreathIn(last.breathIn);
+			if (typeof last.breathOut === 'number') setBreathOut(last.breathOut);
+			if (typeof last.bpm === 'number') setBpm(Math.round(last.bpm));
+
+			// append points in bulk
+			const newPoints = [];
+			for (let p of buf) {
+				if (p.point) newPoints.push({ x: p.point.x || p.t, y: p.point.y || 0 });
+			}
+			if (newPoints.length > 0) {
+				setPoints((ps) => {
+					const merged = ps.concat(newPoints);
+					if (merged.length > 400) return merged.slice(merged.length - 400);
+					return merged;
+				});
+			}
+		}, 200);
+		return () => clearInterval(interval);
+	}, []);
 
 	// Initialize socket connection once
 	useEffect(() => {
-		const API_BASE = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
+		const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 		try {
 			socketRef.current = ioClient(API_BASE, { withCredentials: true });
 			socketRef.current.on("connect", () => console.debug("ws: connected", socketRef.current.id));
@@ -52,28 +87,34 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 				setStatus(`Sharing live data — code ${code}`);
 			});
 
-			socketRef.current.on("joined", ({ code }) => {
+				socketRef.current.on("joined", ({ code }) => {
 				// this device joined as listener
 				sessionCodeRef.current = code;
 				isProducerRef.current = false;
-				setStatus(`Connected to ${code} — showing remote data`);
+					setStatus(`Connected to ${code} — showing remote data`);
+					setJoinPending(false);
+					if (joinTimeoutRef.current) {
+						clearTimeout(joinTimeoutRef.current);
+						joinTimeoutRef.current = null;
+					}
 				setBpm((b) => b);
 			});
+
+				socketRef.current.on("join_error", ({ message }) => {
+					setJoinPending(false);
+					if (joinTimeoutRef.current) {
+						clearTimeout(joinTimeoutRef.current);
+						joinTimeoutRef.current = null;
+					}
+					setStatus(message || "Session not found or full");
+				});
 
 			socketRef.current.on("breath_data", (payload) => {
 				// only apply when this device is a listener
 				if (isProducerRef.current) return;
 				if (!payload) return;
-				if (typeof payload.breathIn === 'number') setBreathIn(payload.breathIn);
-				if (typeof payload.breathOut === 'number') setBreathOut(payload.breathOut);
-				if (typeof payload.bpm === 'number') setBpm(Math.round(payload.bpm));
-				if (payload.point) {
-					setPoints((ps) => {
-						const next = ps.concat({ x: payload.point.x || payload.t, y: payload.point.y || 0 });
-						if (next.length > 400) next.shift();
-						return next;
-					});
-				}
+				// push payload into a small buffer — we'll batch UI updates to avoid jank
+				incomingBufferRef.current.push(payload);
 			});
 
 			// session snapshot (initial state)
@@ -113,9 +154,19 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	};
 
 	const joinSession = () => {
-		if (!socketRef.current) return setStatus("WebSocket not connected");
-		if (!joinCode || !/^[0-9]{6}$/.test(joinCode)) return setStatus("Enter a valid 6-digit code to join");
-		socketRef.current.emit("join_session", { code: joinCode });
+			if (!socketRef.current) return setStatus("WebSocket not connected");
+			if (!joinCode || !/^[0-9]{6}$/.test(joinCode)) return setStatus("Enter a valid 6-digit code to join");
+				setJoinPending(true);
+				setStatus("Joining session...");
+				socketRef.current.emit("join_session", { code: joinCode });
+				// fallback: if no response in 6s, clear pending and show message
+				if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
+				joinTimeoutRef.current = setTimeout(() => {
+					// timeout: still pending
+					setJoinPending(false);
+					setStatus("Join timed out — please try again");
+					joinTimeoutRef.current = null;
+				}, 6000);
 	};
 
 	const getRateColors = (bpmVal) => {
@@ -301,16 +352,14 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			broadcastRef.current = setInterval(() => {
 				if (!socketRef.current || !sessionCodeRef.current) return;
 				if (!isProducerRef.current) return;
-				// use refs so the interval always reads the latest values (avoid stale closure captures)
-				const payload = {
+				socketRef.current.emit("breath_data", {
 					code: sessionCodeRef.current,
 					t: Date.now(),
-					breathIn: breathInRef.current,
-					breathOut: breathOutRef.current,
-					bpm: Math.round(bpmRef.current || 0),
-					point: (pointsRef.current && pointsRef.current.length) ? pointsRef.current[pointsRef.current.length - 1] : null,
-				};
-				socketRef.current.emit("breath_data", payload);
+					breathIn,
+					breathOut,
+					bpm,
+					point: points.length ? points[points.length - 1] : null,
+				});
 			}, 800);
 		} catch {
 			// ignore
@@ -394,7 +443,8 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	const chartOptions = {
 		chart: {
 			id: 'breath-chart',
-			animations: { enabled: true },
+			// disable heavy animations to keep real-time rendering smooth on listeners
+			animations: { enabled: false },
 			toolbar: { show: false },
 			zoom: { enabled: false },
 			// keep full chart decorations (axes/grid) visible for context
@@ -441,10 +491,11 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 				/>
 				<button
 					onClick={joinSession}
-					className="px-3 py-1 bg-slate-700 text-white rounded-md text-sm"
+					disabled={joinPending}
+					className={`px-3 py-1 text-white rounded-md text-sm ${joinPending ? 'bg-slate-400 cursor-not-allowed' : 'bg-slate-700 hover:bg-slate-600'}`}
 				>
-					Join
-				</button>
+					{joinPending ? 'Joining...' : 'Join'}
+					</button>
 			</div>
 			<div className="mt-4 grid grid-cols-1 gap-4">
 				<div>

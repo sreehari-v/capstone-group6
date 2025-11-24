@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "https://careon-backend-rzbf.onrender.com";
-
 const Medication = () => {
   const [medicines, setMedicines] = useState([]);
   const [filteredMeds, setFilteredMeds] = useState([]);
@@ -47,7 +45,7 @@ const Medication = () => {
 
     const fetchMedicines = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/medicines`, {
+      const res = await axios.get("http://localhost:5000/api/medicines", {
         withCredentials: true,
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -87,7 +85,7 @@ const Medication = () => {
 
     try {
       if (editId) {
-        await axios.put(`${API_BASE}/api/medicines/${editId}`,
+        await axios.put(`http://localhost:5000/api/medicines/${editId}`,
         form,
         {
           withCredentials: true,
@@ -98,7 +96,7 @@ const Medication = () => {
         );
         setEditId(null);
       } else {
-        await axios.post(`${API_BASE}/api/medicines`,
+        await axios.post("http://localhost:5000/api/medicines",
         form,
         {
           withCredentials: true,
@@ -124,7 +122,7 @@ const Medication = () => {
     if (!window.confirm("Are you sure you want to delete this medicine?"))
       return;
     try {
-      await axios.delete(`${API_BASE}/api/medicines/${id}`,
+      await axios.delete(`http://localhost:5000/api/medicines/${id}`,
       {
         withCredentials: true,
         headers: {

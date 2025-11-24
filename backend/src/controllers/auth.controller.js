@@ -8,11 +8,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// Frontend URL selection:
-// Local dev: set FRONTEND_URL in .env to http://localhost:5173 (or uncomment the sample in backend/.env)
-// Production: default to the deployed SPA on Render unless overridden via env
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5173" : "https://creon-frontend.onrender.com");
-
 import generateRefreshToken from "../utils/generateRefreshToken.js";
 import { sendMail } from "../utils/mailer.js";
 
@@ -106,9 +101,10 @@ export const googleCallback = async (req, res) => {
             path: "/",
         });
 
-    // Redirect to the SPA root and include a redirect query so client-side router can navigate.
-    // Using a root redirect avoids hosting rewrite mismatches on some static hosts.
-    res.redirect(`${FRONTEND_URL}/?redirect=/dashboard`);
+        const redirectTo =
+            process.env.FRONTEND_URL || "http://localhost:5173";
+
+        res.redirect(`${redirectTo}/dashboard`);
     } catch (err) {
         console.error("Google callback error:", err);
         res.status(500).send("Authentication failed");
@@ -191,8 +187,7 @@ export const signup = async (req, res) => {
             expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
         });
 
-    // Use a root redirect so static hosts that only serve index.html at '/' will work.
-    const verifyUrl = `${FRONTEND_URL}/?redirect=/verify-email?token=${verifyToken}`;
+        const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
 
         const html = `<p>Hi ${user.name},</p>
         <p>Welcome to CareOn! Please verify your email by clicking the link below:</p>
@@ -236,7 +231,8 @@ export const verifyEmail = async (req, res) => {
         await user.save();
 
         // Redirect to frontend with a flag
-    return res.redirect(`${FRONTEND_URL}/?redirect=/login?verified=1`);
+        const redirectTo = process.env.FRONTEND_URL || "http://localhost:5173";
+        return res.redirect(`${redirectTo}/login?verified=1`);
     } catch (err) {
         console.error("Verify email error:", err);
         return res.status(400).send("Token invalid or expired");
