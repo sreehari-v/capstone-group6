@@ -11,15 +11,17 @@ export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const searchParams = new URLSearchParams(location.search);
   const sent = searchParams.get("sent");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       await axios.post(
-        `${import.meta.env.REACT_APP_API_BASE || "http://localhost:5000"}/api/auth/login`,
+        `${import.meta.env.VITE_API_BASE || "http://localhost:5001"}/api/auth/login`,
         { email, password },
         { withCredentials: true }
       );
@@ -31,6 +33,8 @@ export default function LoginForm() {
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.message || "Login failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -52,6 +56,7 @@ export default function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
@@ -62,14 +67,28 @@ export default function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
         <button
           type="submit"
-          className="w-full py-3 px-4 bg-primary text-white rounded-md"
+          disabled={isSubmitting}
+          className={`w-full py-3 px-4 bg-primary text-white rounded-md ${
+            isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"
+          }`}
         >
-          Login
+          {isSubmitting ? (
+            <span className="flex items-center justify-center">
+              <span
+                className="inline-block w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"
+                aria-hidden="true"
+              ></span>
+              Logging in...
+            </span>
+          ) : (
+            "Login"
+          )}
         </button>
       </form>
 

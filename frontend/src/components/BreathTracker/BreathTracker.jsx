@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import Chart from "react-apexcharts";
+import { io as ioClient } from "socket.io-client";
 
 export default function BreathTracker({ active = false, onError, resetSignal = 0, sensitivity = 3 }) {
 	// running state removed — parent controls start/pause via `active` prop
@@ -8,6 +9,9 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	const [breathOut, setBreathOut] = useState(0);
 	const [, setBreathInTimes] = useState([]);
 	const [points, setPoints] = useState([]);
+	const pointsRef = useRef([]);
+	const breathInRef = useRef(0);
+	const breathOutRef = useRef(0);
 	const inhaleTimesRef = useRef([]);
 	const exhaleTimesRef = useRef([]);
 	const cycleTimesRef = useRef([]);
@@ -24,6 +28,95 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	const emaSqRef = useRef(0);
 	const listenerRef = useRef(null);
 	const startupTimerRef = useRef(null);
+	const socketRef = useRef(null);
+	const sessionCodeRef = useRef(null);
+	const isProducerRef = useRef(false);
+	// expose minimal UI state for later wiring (silence unused-variable lint)
+	const [__unused_remoteMode, __unused_setRemoteMode] = useState(false);
+	const [__unused_connectedCode, __unused_setConnectedCode] = useState(null);
+	const [__unused_listenersCount, __unused_setListenersCount] = useState(0);
+	const [__unused_producerId, __unused_setProducerId] = useState(null);
+	const broadcastRef = useRef(null);
+	const [joinCode, setJoinCode] = useState("");
+
+	// Initialize socket connection once
+	useEffect(() => {
+		const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
+		try {
+			socketRef.current = ioClient(API_BASE, { withCredentials: true });
+			socketRef.current.on("connect", () => console.debug("ws: connected", socketRef.current.id));
+
+			socketRef.current.on("session_created", ({ code }) => {
+				sessionCodeRef.current = code;
+				isProducerRef.current = true;
+				setStatus(`Sharing live data — code ${code}`);
+			});
+
+			socketRef.current.on("joined", ({ code }) => {
+				// this device joined as listener
+				sessionCodeRef.current = code;
+				isProducerRef.current = false;
+				setStatus(`Connected to ${code} — showing remote data`);
+				setBpm((b) => b);
+			});
+
+			socketRef.current.on("breath_data", (payload) => {
+				// only apply when this device is a listener
+				if (isProducerRef.current) return;
+				if (!payload) return;
+				if (typeof payload.breathIn === 'number') setBreathIn(payload.breathIn);
+				if (typeof payload.breathOut === 'number') setBreathOut(payload.breathOut);
+				if (typeof payload.bpm === 'number') setBpm(Math.round(payload.bpm));
+				if (payload.point) {
+					setPoints((ps) => {
+						const next = ps.concat({ x: payload.point.x || payload.t, y: payload.point.y || 0 });
+						if (next.length > 400) next.shift();
+						return next;
+					});
+				}
+			});
+
+			// session snapshot (initial state)
+			socketRef.current.on("session_snapshot", (snapshot) => {
+				if (!snapshot) return;
+				if (snapshot.breathIn) setBreathIn(snapshot.breathIn);
+				if (snapshot.breathOut) setBreathOut(snapshot.breathOut);
+				if (snapshot.bpm) setBpm(Math.round(snapshot.bpm));
+				if (snapshot.points && Array.isArray(snapshot.points)) setPoints(snapshot.points.slice(-400));
+			});
+
+			// producer asked to provide snapshot for a specific listener
+			socketRef.current.on("request_snapshot", ({ to }) => {
+				if (!to) return;
+				const snapshot = {
+					breathIn: breathInRef.current,
+					breathOut: breathOutRef.current,
+					bpm: bpmRef.current,
+					points: pointsRef.current.slice(-400),
+				};
+				socketRef.current.emit("session_snapshot", { to, snapshot });
+			});
+
+
+		} catch (e) {
+			console.warn("ws init failed", e);
+		}
+
+		return () => {
+			try { socketRef.current?.disconnect(); } catch { /* ignore */ }
+		};
+	}, []);
+
+	const createSession = () => {
+		if (!socketRef.current) return setStatus("WebSocket not connected");
+		socketRef.current.emit("create_session");
+	};
+
+	const joinSession = () => {
+		if (!socketRef.current) return setStatus("WebSocket not connected");
+		if (!joinCode || !/^[0-9]{6}$/.test(joinCode)) return setStatus("Enter a valid 6-digit code to join");
+		socketRef.current.emit("join_session", { code: joinCode });
+	};
 
 	const getRateColors = (bpmVal) => {
 		if (!bpmVal || bpmVal <= 0) return { bg: '#f1f5f9', color: '#0f172a' }; // neutral slate-100
@@ -163,6 +256,12 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 		window.addEventListener("devicemotion", handler, true);
 		listenerRef.current = { handler };
 
+		// If socket exists and this device created a session, start acting as producer
+		if (socketRef.current && isProducerRef.current && sessionCodeRef.current) {
+			console.debug("BreathTracker: producer broadcasting start snapshot");
+			socketRef.current.emit("session_snapshot", { snapshot: { breathIn, breathOut, points, bpm }, to: null });
+		}
+
 		// start BPM calculator (runs while tracking)
 		if (bpmTimerRef.current) clearInterval(bpmTimerRef.current);
 		bpmTimerRef.current = setInterval(() => {
@@ -196,6 +295,25 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			}
 		}, 1000);
 
+		// start broadcast interval for producer
+		try {
+			if (broadcastRef.current) clearInterval(broadcastRef.current);
+			broadcastRef.current = setInterval(() => {
+				if (!socketRef.current || !sessionCodeRef.current) return;
+				if (!isProducerRef.current) return;
+				socketRef.current.emit("breath_data", {
+					code: sessionCodeRef.current,
+					t: Date.now(),
+					breathIn,
+					breathOut,
+					bpm,
+					point: points.length ? points[points.length - 1] : null,
+				});
+			}, 800);
+		} catch {
+			// ignore
+		}
+
 		// If no devicemotion events arrive within 2s, assume sensor not available
 		console.debug("BreathTracker: setting startup timer for 2000ms waiting for devicemotion events");
 		startupTimerRef.current = setTimeout(() => {
@@ -206,6 +324,8 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			stop();
 			onError && onError({ code: "nosensor", message: msg });
 		}, 2000);
+
+		// nothing else here
 	};
 
 	const stop = () => {
@@ -222,6 +342,15 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 		if (bpmTimerRef.current) {
 			clearInterval(bpmTimerRef.current);
 			bpmTimerRef.current = null;
+		}
+		// stop broadcast interval if running
+		try {
+			if (broadcastRef.current) {
+				clearInterval(broadcastRef.current);
+				broadcastRef.current = null;
+			}
+		} catch {
+			// ignore
 		}
 	};
 
@@ -249,6 +378,11 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 		setBpm(0);
 		bpmRef.current = 0;
 	}, [resetSignal]);
+
+	// keep refs in sync with state for snapshot/requests
+	useEffect(() => { breathInRef.current = breathIn; }, [breathIn]);
+	useEffect(() => { breathOutRef.current = breathOut; }, [breathOut]);
+	useEffect(() => { pointsRef.current = points; }, [points]);
 
 	const total = Math.floor((breathIn + breathOut) / 2);
 
@@ -290,6 +424,26 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 	return (
 		<div className="w-full">
 			<div className="mb-2 text-sm text-gray-600">{status}</div>
+			<div className="flex items-center justify-center gap-2 mt-2">
+				<button
+					onClick={createSession}
+					className="px-3 py-1 bg-primary text-white rounded-md text-sm"
+				>
+					Share live
+				</button>
+				<input
+					value={joinCode}
+					onChange={(e) => setJoinCode(e.target.value)}
+					placeholder="123456"
+					className="w-28 text-center px-2 py-1 border rounded-md text-sm"
+				/>
+				<button
+					onClick={joinSession}
+					className="px-3 py-1 bg-slate-700 text-white rounded-md text-sm"
+				>
+					Join
+				</button>
+			</div>
 			<div className="mt-4 grid grid-cols-1 gap-4">
 				<div>
 					<div className="grid grid-cols-4 gap-2 text-center">
