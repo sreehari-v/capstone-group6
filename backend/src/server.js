@@ -39,7 +39,12 @@ app.use("/api/donations", donationRoutes);
 // or FRONTEND_URLS to a comma-separated list of allowed origins.
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const FRONTEND_URLS = (process.env.FRONTEND_URLS || "").split(",").map((s) => s.trim()).filter(Boolean);
-const allowedOrigins = new Set([FRONTEND_URL, ...FRONTEND_URLS]);
+// Default production origins we allow (can be overridden via FRONTEND_URL / FRONTEND_URLS env)
+const DEFAULT_ALLOWED = [
+  "https://careon-backend-rzbf.onrender.com",
+  "https://creon-frontend.onrender.com",
+];
+const allowedOrigins = new Set([FRONTEND_URL, ...FRONTEND_URLS, ...DEFAULT_ALLOWED].filter(Boolean));
 
 app.use(
   cors({
