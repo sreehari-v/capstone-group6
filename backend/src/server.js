@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import csrfProtection from "./middleware/csrfMiddleware.js";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 import donationRoutes from "./routes/donationRoutes.js";
 import http from "http";
@@ -63,10 +64,34 @@ if (process.env.NODE_ENV !== 'production') {
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 
+// If a built frontend exists in ../frontend/dist, serve it as static files and
+// provide an index.html fallback for client-side routing. This helps when the
+// SPA is deployed together with the backend (or when Render serves the backend
+// and you want the backend to serve the static assets).
+const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");
+if (fs.existsSync(FRONTEND_DIST)) {
+  app.use(express.static(FRONTEND_DIST));
+
+  // Serve index.html for non-API GET requests (SPA fallback)
+  app.get("*", (req, res, next) => {
+    // skip API and socket routes
+    if (req.method !== "GET" || req.path.startsWith("/api") || req.path.startsWith("/socket.io")) {
+      return next();
+    }
+
+    const indexHtml = path.join(FRONTEND_DIST, "index.html");
+    if (fs.existsSync(indexHtml)) {
+      return res.sendFile(indexHtml);
+    }
+    return next();
+  });
+}
+
 // Test route
-app.get("/", (req, res) => {
+app.get("/api/test-server", (req, res) => {
   res.send("<h1>Server running successfully</h1>");
 });
+
 
 // API reference route
 app.get("/api", (req, res) => {

@@ -106,7 +106,9 @@ export const googleCallback = async (req, res) => {
             path: "/",
         });
 
-        res.redirect(`${FRONTEND_URL}/dashboard`);
+    // Redirect to the SPA root and include a redirect query so client-side router can navigate.
+    // Using a root redirect avoids hosting rewrite mismatches on some static hosts.
+    res.redirect(`${FRONTEND_URL}/?redirect=/dashboard`);
     } catch (err) {
         console.error("Google callback error:", err);
         res.status(500).send("Authentication failed");
@@ -189,7 +191,8 @@ export const signup = async (req, res) => {
             expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
         });
 
-    const verifyUrl = `${FRONTEND_URL}/verify-email?token=${verifyToken}`;
+    // Use a root redirect so static hosts that only serve index.html at '/' will work.
+    const verifyUrl = `${FRONTEND_URL}/?redirect=/verify-email?token=${verifyToken}`;
 
         const html = `<p>Hi ${user.name},</p>
         <p>Welcome to CareOn! Please verify your email by clicking the link below:</p>
@@ -233,7 +236,7 @@ export const verifyEmail = async (req, res) => {
         await user.save();
 
         // Redirect to frontend with a flag
-    return res.redirect(`${FRONTEND_URL}/login?verified=1`);
+    return res.redirect(`${FRONTEND_URL}/?redirect=/login?verified=1`);
     } catch (err) {
         console.error("Verify email error:", err);
         return res.status(400).send("Token invalid or expired");
