@@ -37,7 +37,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Connect to MongoDB
-
 connectDB();
 
 //  Middlewares
@@ -48,9 +47,12 @@ app.use(csrfProtection);
 app.use("/api/donations", donationRoutes);
 
 // CORS setup
+
 // Local dev example (uncomment in .env or here if you need to force localhost):
 // const LOCAL_FRONTEND = "http://localhost:5173";
+
 // Production FRONTEND_URL should be set in backend/.env (e.g. https://creon-frontend.onrender.com)
+
 // Default to the deployed SPA URL when running in production if an env var is not provided.
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'production' ? "http://localhost:5173" : "https://creon-frontend.onrender.com");
 
@@ -59,7 +61,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== 'prod
 if (process.env.NODE_ENV !== 'production') {
   app.use(
     cors({
-      origin: true, // reflect request origin
+      origin: true,
       credentials: true,
     })
   );
