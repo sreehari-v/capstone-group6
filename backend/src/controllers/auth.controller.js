@@ -10,8 +10,8 @@ dotenv.config();
 
 // Frontend URL selection:
 // Local dev: set FRONTEND_URL in .env to http://localhost:5173 (or uncomment the sample in backend/.env)
-// Production: set FRONTEND_URL to your production client URL (e.g. https://prince-pr.com)
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5173" : process.env.FRONTEND_URL);
+// Production: default to the deployed SPA on Render unless overridden via env
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? "http://localhost:5173" : "https://creon-frontend.onrender.com");
 
 import generateRefreshToken from "../utils/generateRefreshToken.js";
 import { sendMail } from "../utils/mailer.js";

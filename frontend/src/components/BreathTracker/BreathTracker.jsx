@@ -301,14 +301,16 @@ export default function BreathTracker({ active = false, onError, resetSignal = 0
 			broadcastRef.current = setInterval(() => {
 				if (!socketRef.current || !sessionCodeRef.current) return;
 				if (!isProducerRef.current) return;
-				socketRef.current.emit("breath_data", {
+				// use refs so the interval always reads the latest values (avoid stale closure captures)
+				const payload = {
 					code: sessionCodeRef.current,
 					t: Date.now(),
-					breathIn,
-					breathOut,
-					bpm,
-					point: points.length ? points[points.length - 1] : null,
-				});
+					breathIn: breathInRef.current,
+					breathOut: breathOutRef.current,
+					bpm: Math.round(bpmRef.current || 0),
+					point: (pointsRef.current && pointsRef.current.length) ? pointsRef.current[pointsRef.current.length - 1] : null,
+				};
+				socketRef.current.emit("breath_data", payload);
 			}, 800);
 		} catch {
 			// ignore
