@@ -14,6 +14,7 @@ import DashBoard from "../pages/DashBoard";
 import StepTracking from "../pages/StepTracking";
 import Breaths from "../pages/Breaths";
 import Medication from "../pages/Medication";
+import Overview from "../pages/Overview";
 import Donate from "../pages/Donate";
 
 const router = createBrowserRouter([
@@ -41,7 +42,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashBoard /> },
+  { index: true, element: <Overview /> },
       { path: "steps", element: <StepTracking /> },
       { path: "medication", element: <Medication /> },
       { path: "breath", element: <Breaths /> },
