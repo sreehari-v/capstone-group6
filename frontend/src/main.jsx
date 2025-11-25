@@ -4,12 +4,15 @@ import './index.css'
 import { RouterProvider } from 'react-router'
 import router from './routes/router.jsx'
 import { AuthProvider } from './contexts/AuthContext.jsx'
+import { ToastProvider } from './contexts/ToastContext.jsx'
 import StepTracking from './pages/StepTracking.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider>
+    </ToastProvider>
   </StrictMode>,
 )
