@@ -349,3 +349,105 @@ export const refresh = async (req, res) => {
         return res.status(401).json({ message: "Refresh failed" });
     }
 };
+
+// ===========================
+// Update profile
+// PUT /api/auth/profile
+// ===========================
+export const updateProfile = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { name, email, avatar } = req.body || {};
+        if (typeof name === 'string' && name.trim()) user.name = name.trim();
+        if (typeof email === 'string' && email.trim()) user.email = email.trim();
+        if (typeof avatar === 'string') user.avatar = avatar;
+
+        await user.save();
+
+        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar });
+    } catch (err) {
+        console.error("updateProfile error:", err);
+        return res.status(500).json({ message: "Profile update failed" });
+    }
+};
+
+// ===========================
+// Change password
+// POST /api/auth/change-password
+// ===========================
+export const changePassword = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { oldPass, newPass } = req.body || {};
+        if (!newPass || newPass.length < 6) return res.status(400).json({ message: "New password must be at least 6 characters" });
+
+        // If user has a password, verify oldPass
+        if (user.password) {
+            const ok = await bcrypt.compare(oldPass || '', user.password);
+            if (!ok) return res.status(403).json({ message: "Current password incorrect" });
+        }
+
+        const hashed = await bcrypt.hash(newPass, 10);
+        user.password = hashed;
+        await user.save();
+
+        return res.json({ ok: true, message: "Password changed" });
+    } catch (err) {
+        console.error("changePassword error:", err);
+        return res.status(500).json({ message: "Password change failed" });
+    }
+};
+
+// ===========================
+// Delete account
+// DELETE /api/auth/delete
+// ===========================
+export const deleteAccount = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        await User.findByIdAndDelete(user._id);
+
+        // clear cookies
+        res.clearCookie('token', { path: '/' });
+        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('csrfToken', { path: '/' });
+
+        return res.json({ ok: true, message: 'Account deleted' });
+    } catch (err) {
+        console.error('deleteAccount error:', err);
+        return res.status(500).json({ message: 'Delete failed' });
+    }
+};
+
+// ===========================
+// Logout all devices (best-effort)
+// POST /api/auth/logout-all
+// ===========================
+export const logoutAll = async (req, res) => {
+    try {
+        // If you maintain server-side session or refresh tokens, invalidate them here.
+        // For now, clear cookies for this client and respond success.
+        res.clearCookie('token', { path: '/' });
+        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('csrfToken', { path: '/' });
+        return res.json({ ok: true, message: 'Logged out (client cookies cleared)' });
+    } catch (err) {
+        console.error('logoutAll error:', err);
+        return res.status(500).json({ message: 'Logout-all failed' });
+    }
+};

@@ -11,6 +11,7 @@ import {
 } from "../controllers/auth.controller.js";
 
 import { refresh } from "../controllers/auth.controller.js";
+import { updateProfile, changePassword, deleteAccount, logoutAll } from "../controllers/auth.controller.js";
 
 const router = express.Router();
 
@@ -25,6 +26,10 @@ router.get("/google/callback", googleCallback);
 
 router.get("/me", me);
 router.post("/logout", logout);
+router.post("/logout-all", logoutAll);
+router.put("/profile", updateProfile);
+router.post("/change-password", changePassword);
+router.delete("/delete", deleteAccount);
 router.post("/refresh", refresh);
 
 export default router;
