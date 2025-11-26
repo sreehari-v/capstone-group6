@@ -151,6 +151,9 @@ export const me = async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             authProvider: user.authProvider,
+            age: user.age ?? null,
+            height: user.height ?? null,
+            weight: user.weight ?? null,
             csrfToken,
         });
     } catch (err) {
@@ -362,14 +365,28 @@ export const updateProfile = async (req, res) => {
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        const { name, email, avatar } = req.body || {};
+        const { name, email, avatar, age, height, weight } = req.body || {};
         if (typeof name === 'string' && name.trim()) user.name = name.trim();
         if (typeof email === 'string' && email.trim()) user.email = email.trim();
         if (typeof avatar === 'string') user.avatar = avatar;
 
+        // Accept numeric profile fields if provided
+        if (age !== undefined && age !== null && age !== '') {
+            const n = Number(age);
+            if (!Number.isNaN(n)) user.age = n;
+        }
+        if (height !== undefined && height !== null && height !== '') {
+            const n = Number(height);
+            if (!Number.isNaN(n)) user.height = n;
+        }
+        if (weight !== undefined && weight !== null && weight !== '') {
+            const n = Number(weight);
+            if (!Number.isNaN(n)) user.weight = n;
+        }
+
         await user.save();
 
-        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar });
+        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar, age: user.age, height: user.height, weight: user.weight });
     } catch (err) {
         console.error("updateProfile error:", err);
         return res.status(500).json({ message: "Profile update failed" });

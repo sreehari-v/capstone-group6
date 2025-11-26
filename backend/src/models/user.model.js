@@ -7,10 +7,14 @@ const userSchema = new mongoose.Schema(
         password: { type: String },          // optional for Google auth
         googleId: { type: String },
         authProvider: { type: String, default: "local" },
-            // Email verification
-            isVerified: { type: Boolean, default: false },
-            verificationToken: { type: String },
-            avatar: { type: String },
+        // Email verification
+        isVerified: { type: Boolean, default: false },
+        verificationToken: { type: String },
+        avatar: { type: String },
+        // Optional profile fields
+        age: { type: Number },
+        height: { type: Number }, // centimeters
+        weight: { type: Number }, // kilograms
     },
     { timestamps: true }
 );
