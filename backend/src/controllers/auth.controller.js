@@ -118,6 +118,7 @@ export const logout = (req, res) => {
     // Clear both access and refresh cookies
     res.clearCookie("token", { path: "/" });
     res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("csrfToken", { path: "/" });
     res.json({ message: "Logged out" });
 };
 
@@ -126,6 +127,14 @@ export const logout = (req, res) => {
 // ===========================
 export const me = async (req, res) => {
     try {
+        // Debug: log cookie keys to help diagnose 401s during development
+        try {
+            const ck = Object.keys(req.cookies || {});
+            console.log('me: incoming cookies ->', ck);
+        } catch (e) {
+            console.log('me: failed to read cookies', e);
+        }
+
         const token = req.cookies?.token;
         if (!token)
             return res.status(401).json({ message: "Not authenticated" });
@@ -157,7 +166,7 @@ export const me = async (req, res) => {
             csrfToken,
         });
     } catch (err) {
-        console.error("me error:", err);
+        console.error("me error:", err && err.message ? err.message : err);
         return res.status(401).json({ message: "Invalid token" });
     }
 };
@@ -300,6 +309,7 @@ export const login = async (req, res) => {
         res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
         res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
+
         // Issue a non-httpOnly CSRF token for double-submit protection
         const csrfToken = crypto.randomBytes(24).toString("hex");
         res.cookie("csrfToken", csrfToken, {
@@ -332,6 +342,7 @@ export const refresh = async (req, res) => {
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ message: "User not found" });
 
+
         const newToken = generateToken(user);
         const isProd = process.env.NODE_ENV === "production";
         res.cookie("token", newToken, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
@@ -345,6 +356,8 @@ export const refresh = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
             path: "/",
         });
+
+        // Note: refresh-token session tracking removed — keep refresh cookie as-is
 
         return res.json({ ok: true, csrfToken });
     } catch (err) {
@@ -392,6 +405,19 @@ export const updateProfile = async (req, res) => {
         return res.status(500).json({ message: "Profile update failed" });
     }
 };
+
+// ===========================
+// List sessions for current user
+// GET /api/auth/sessions
+// ===========================
+// listSessions removed — session management was a prototype and has been reverted
+
+// ===========================
+// Revoke a single session (logout device)
+// POST /api/auth/sessions/revoke
+// body: { tokenPreview || token } (we'll accept full token)
+// ===========================
+// revokeSession removed — session management was a prototype and has been reverted
 
 // ===========================
 // Change password
@@ -457,8 +483,7 @@ export const deleteAccount = async (req, res) => {
 // ===========================
 export const logoutAll = async (req, res) => {
     try {
-        // If you maintain server-side session or refresh tokens, invalidate them here.
-        // For now, clear cookies for this client and respond success.
+        // Clear cookies for this client (no server-side session store)
         res.clearCookie('token', { path: '/' });
         res.clearCookie('refreshToken', { path: '/' });
         res.clearCookie('csrfToken', { path: '/' });

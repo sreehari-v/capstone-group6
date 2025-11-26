@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ToastContext from '../contexts/ToastContext.jsx';
+import AuthContext from "../contexts/AuthContext.jsx";
 
 const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
 
@@ -26,7 +27,7 @@ const Settings = () => {
 	const [passwordForm, setPasswordForm] = useState({ oldPass: "", newPass: "", confirm: "" });
 	const [changingPass, setChangingPass] = useState(false);
 
-	const [sessions] = useState([{ id: 1, device: "Chrome · Windows", lastActive: "2 min ago" }]);
+	const { hardResetAuth } = useContext(AuthContext);
 
 	useEffect(() => { localStorage.setItem("profile", JSON.stringify(profile)); }, [profile]);
 
@@ -47,12 +48,16 @@ const Settings = () => {
 					if (res.data.csrfToken) { setCsrfToken(res.data.csrfToken); localStorage.setItem('csrfToken', res.data.csrfToken); }
 				}
 			} catch (err) {
-				// ignore
+				console.debug('Settings: load profile failed', err?.message || err);
 			}
 		};
 		load();
+
+		// no session listing (removed)
 		return () => { mounted = false; };
 	}, []);
+
+	// session features removed
 
 	const handleAvatarUpload = (e) => {
 		const file = e.target.files?.[0];
@@ -95,19 +100,29 @@ const Settings = () => {
 	};
 
 	const handleDelete = async () => {
-		if (!window.confirm('Delete account permanently?')) return;
-		try {
-			await axios.delete(`${API_BASE}/api/auth/delete`, { withCredentials: true, headers: { 'X-CSRF-Token': csrfToken || localStorage.getItem('csrfToken') } });
-			localStorage.clear(); notify('Account deleted', 'success'); navigate('/');
-		} catch (err) { console.error(err); notify('Failed to delete account', 'error'); }
-	};
+  if (!window.confirm("Delete account permanently?")) return;
 
-	const logoutAll = async () => {
-		try {
-			await axios.post(`${API_BASE}/api/auth/logout-all`, {}, { withCredentials: true, headers: { 'X-CSRF-Token': csrfToken || localStorage.getItem('csrfToken') } });
-			notify('Logged out everywhere', 'success');
-		} catch (err) { console.error(err); notify('Failed to log out everywhere', 'error'); }
-	};
+  try {
+			// Prevent the global auth loader from immediately re-checking while delete is in-flight
+			try { localStorage.setItem('suppressAuthFetch', '1'); } catch (e) { console.debug('suppressAuthFetch write failed', e); }
+    await axios.delete(`${API_BASE}/api/auth/delete`, {
+      withCredentials: true,
+      headers: { "X-CSRF-Token": csrfToken || localStorage.getItem("csrfToken") }
+    });
+
+    notify("Account deleted", "success");
+
+    // Critical: reset global auth BEFORE navigating
+    hardResetAuth();
+
+    navigate("/"); // go home cleanly
+  } catch (err) {
+    console.error(err);
+    notify("Failed to delete account", "error");
+  }
+};
+
+	// session features removed
 
 	return (
 		<div className="layout-content-container flex flex-col w-full flex-1 overflow-y-auto p-4">
@@ -143,11 +158,7 @@ const Settings = () => {
 					</div>
 				</section>
 
-				<section className="bg-white rounded shadow p-6">
-					<h3 className="font-semibold mb-3">Security</h3>
-					<div className="space-y-3">{sessions.map(s => (<div key={s.id} className="flex items-center justify-between"><div><div className="font-medium">{s.device}</div><div className="text-sm text-gray-500">Last active {s.lastActive}</div></div><button className="px-3 py-1 bg-slate-100 rounded">Log Out</button></div>))}</div>
-					<div className="mt-4"><button className="px-3 py-2 bg-red-600 text-white rounded" onClick={logoutAll}>Log Out of All Devices</button></div>
-				</section>
+				{/* Security section removed */}
 
 				<section className="bg-white rounded shadow p-6 md:col-span-2">
 					<h3 className="font-semibold mb-3">About</h3>
