@@ -4,14 +4,19 @@ import { useEffect, useRef, useState } from "react";
  * Foreground step counter using accelerometer magnitude + adaptive threshold.
  * Works on HTTPS or localhost. iOS needs a user gesture to grant permission.
  */
-export default function useStepCounter({ minStepMs = 350 } = {}) {
-  const [steps, setSteps] = useState(0);
+export default function useStepCounter({ minStepMs = 350, initialSteps = 0 } = {}) {
+  const [steps, setSteps] = useState(initialSteps);
   const [active, setActive] = useState(false);
 
   const last = useRef(0);
   const lp = useRef({ x: 0, y: 0, z: 0 });
   const hp = useRef({ x: 0, y: 0, z: 0 });
   const stats = useRef({ mean: 0, var: 0, n: 0 });
+
+  // keep steps in sync with initialSteps from backend
+  useEffect(() => {
+    setSteps(initialSteps);
+  }, [initialSteps]);
 
   useEffect(() => {
     if (!active) return;
@@ -21,27 +26,31 @@ export default function useStepCounter({ minStepMs = 350 } = {}) {
       const ay = e.accelerationIncludingGravity?.y ?? 0;
       const az = e.accelerationIncludingGravity?.z ?? 0;
 
-      // low-pass gravity
-      const alpha = 0.1;
-      lp.current.x = alpha * ax + (1 - alpha) * lp.current.x;
-      lp.current.y = alpha * ay + (1 - alpha) * lp.current.y;
-      lp.current.z = alpha * az + (1 - alpha) * lp.current.z;
+      // low-pass filter
+      const alpha = 0.9;
+      lp.current.x = alpha * lp.current.x + (1 - alpha) * ax;
+      lp.current.y = alpha * lp.current.y + (1 - alpha) * ay;
+      lp.current.z = alpha * lp.current.z + (1 - alpha) * az;
 
-      // high-pass motion
+      // high-pass filter
       hp.current.x = ax - lp.current.x;
       hp.current.y = ay - lp.current.y;
       hp.current.z = az - lp.current.z;
 
-      const m = Math.hypot(hp.current.x, hp.current.y, hp.current.z);
+      const m = Math.sqrt(
+        hp.current.x * hp.current.x +
+          hp.current.y * hp.current.y +
+          hp.current.z * hp.current.z
+      );
 
-      // adaptive threshold: mean + 1*std (with floor)
-      const d = stats.current;
-      d.n++;
-      const delta = m - d.mean;
-      d.mean += delta / d.n;
-      d.var += delta * (m - d.mean);
-      const std = Math.sqrt(d.var / Math.max(1, d.n - 1));
-      const threshold = Math.max(0.8, d.mean + 1.0 * std);
+      // running variance / mean to adapt threshold
+      const n = (stats.current.n = stats.current.n + 1);
+      const delta = m - stats.current.mean;
+      stats.current.mean += delta / n;
+      stats.current.var += delta * (m - stats.current.mean);
+
+      const std = Math.sqrt(stats.current.var / Math.max(1, n - 1));
+      const threshold = stats.current.mean + std * 1.0;
 
       const now = performance.now();
       if (m > threshold && now - last.current > minStepMs) {
@@ -63,8 +72,12 @@ export default function useStepCounter({ minStepMs = 350 } = {}) {
   };
 
   const start = async () => {
-    try { await requestPermission(); } catch {}
-    setSteps(0);
+    try {
+      await requestPermission();
+    } catch (e) {
+      // ignore permission errors for now
+    }
+    // reset filters / timing, but NOT the step count
     last.current = 0;
     lp.current = { x: 0, y: 0, z: 0 };
     hp.current = { x: 0, y: 0, z: 0 };
