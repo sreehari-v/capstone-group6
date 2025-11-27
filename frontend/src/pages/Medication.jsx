@@ -14,6 +14,9 @@ const Medication = () => {
   });
   const [editId, setEditId] = useState(null);
 
+  const apiBase =
+    import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
+
   // const user = JSON.parse(localStorage.getItem("user"));
   useEffect(() => {
     fetchMedicines();
@@ -45,7 +48,7 @@ const Medication = () => {
 
     const fetchMedicines = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/medicines", {
+      const res = await axios.get(`${apiBase}/api/medicines`, {
         withCredentials: true,
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -85,7 +88,7 @@ const Medication = () => {
 
     try {
       if (editId) {
-        await axios.put(`http://localhost:5000/api/medicines/${editId}`,
+        await axios.put(`${apiBase}/api/medicines/${editId}`,
         form,
         {
           withCredentials: true,
@@ -96,7 +99,7 @@ const Medication = () => {
         );
         setEditId(null);
       } else {
-        await axios.post("http://localhost:5000/api/medicines",
+        await axios.post(`${apiBase}/api/medicines`,
         form,
         {
           withCredentials: true,
@@ -122,7 +125,7 @@ const Medication = () => {
     if (!window.confirm("Are you sure you want to delete this medicine?"))
       return;
     try {
-      await axios.delete(`http://localhost:5000/api/medicines/${id}`,
+      await axios.delete(`${apiBase}/api/medicines/${id}`,
       {
         withCredentials: true,
         headers: {
