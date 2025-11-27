@@ -27,16 +27,34 @@ app.use(express.json());
 app.use(cookieParser());
 
 // -------------------- CORS --------------------
-// Allow frontend origin and credentials
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production"
-  ? "http://localhost:5173"
-  : "https://creon-frontend.onrender.com");
+// Allow frontend origin(s) and credentials. Support comma-separated FRONTEND_URLS or single FRONTEND_URL.
+const defaultDevOrigin = "http://localhost:5173";
+const rawFrontend = process.env.FRONTEND_URLS || process.env.FRONTEND_URL || (process.env.NODE_ENV !== "production" ? defaultDevOrigin : undefined);
+const allowedOrigins = rawFrontend ? rawFrontend.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-app.use(cors({
-  origin: FRONTEND_URL,
+// CORS origin function checks the incoming Origin header and allows it if it's in the whitelist.
+const corsOptions = {
+  origin: function (origin, callback) {
+    // allow non-browser tools or same-origin requests with no origin
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0) return callback(new Error('No allowed origins configured'));
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Origin not allowed by CORS'));
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-}));
+};
+
+app.use((req, res, next) => {
+  // Wrap CORS so errors become plain rejections instead of uncaught exceptions
+  cors(corsOptions)(req, res, (err) => {
+    if (err) {
+      console.warn('CORS warning:', err.message || err);
+      return res.status(403).json({ message: 'CORS origin denied' });
+    }
+    next();
+  });
+});
 
 // -------------------- CSRF --------------------
 // Only check CSRF for state-changing methods
