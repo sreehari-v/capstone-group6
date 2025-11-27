@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
         age: { type: Number },
         height: { type: Number }, // centimeters
         weight: { type: Number }, // kilograms
+        // (sessions removed: session management was a prototype and has been reverted)
     },
     { timestamps: true }
 );
