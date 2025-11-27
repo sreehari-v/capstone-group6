@@ -84,6 +84,21 @@ if (fs.existsSync(FRONTEND_DIST)) {
 app.get("/api/test-server", (req, res) => res.send("<h1>Server running successfully</h1>"));
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
+// Temporary debug endpoint - disabled by default. Set ENABLE_DEBUG_ENDPOINT=true in env to enable.
+// Returns the request headers and parsed cookies so you can inspect what the server receives
+// (useful when diagnosing missing cookies / CORS issues in production).
+if (process.env.ENABLE_DEBUG_ENDPOINT === "true") {
+  app.get("/api/debug/echo", (req, res) => {
+    // Do not return any sensitive values in production unless you explicitly enable this endpoint.
+    return res.json({
+      ok: true,
+      origin: req.get("origin") || null,
+      headers: req.headers,
+      cookies: req.cookies || {}
+    });
+  });
+}
+
 // HTTP + Socket.IO
 const server = http.createServer(app);
 const io = new IOServer(server, {
