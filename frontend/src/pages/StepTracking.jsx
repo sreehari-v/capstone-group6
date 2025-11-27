@@ -13,6 +13,7 @@ const StepTracking = () => {
 
   // hook now accepts initialSteps
   const { steps, active, start, stop } = useStepCounter({ initialSteps });
+  // new commit
 
   // load from backend on mount
   useEffect(() => {
