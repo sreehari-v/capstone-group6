@@ -4,7 +4,7 @@ import "./MainFooter.css";
 
 const MainFooter = () => {
   return (
-    <footer className="bg-[#0f172a] py-10 px-4 md:px-10 text-center text-gray-300">
+    <footer className="bg-[#000000ff] py-10 px-4 md:px-10 text-center text-gray-300">
       <div className="max-w-6xl mx-auto">
 
         {/* Quick Links */}

@@ -326,7 +326,7 @@ export default function BreathTracker({
   };
 
   const getRateColors = (bpmVal) => {
-    if (!bpmVal || bpmVal <= 0) return { bg: "#f1f5f9", color: "#0f172a" }; // neutral slate-100
+    if (!bpmVal || bpmVal <= 0) return { bg: "#f1f5f9", color: "#000000ff" }; // neutral slate-100
     if (bpmVal < 8) return { bg: "#fee2e2", color: "#991b1b" }; // <8 Dangerously low - Red
     if (bpmVal >= 8 && bpmVal <= 11) return { bg: "#fff4e6", color: "#92400e" }; // 8-11 Lower than normal - Orange
     if (bpmVal >= 12 && bpmVal <= 20)

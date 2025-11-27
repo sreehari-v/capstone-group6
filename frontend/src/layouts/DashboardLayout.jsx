@@ -11,7 +11,7 @@ const DashboardLayout = () => {
         w-full
         bg-[var(--background-light)]
         text-[var(--text-primary)]
-        dark:bg-[#0f172a]
+        dark:bg-[#000000ff]
         dark:text-slate-200
       "
     >
@@ -25,7 +25,7 @@ const DashboardLayout = () => {
           overflow-y-auto
           p-6
           bg-[var(--background-light)]
-          dark:bg-[#0f172a]
+          dark:bg-[#000000ff]
           dark:text-slate-200
           transition-colors
         "

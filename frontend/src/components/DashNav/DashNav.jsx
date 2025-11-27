@@ -15,7 +15,7 @@ const DashNav = () => {
     flex flex-col gap-4
     bg-[var(--background-light)]
     border-slate-200
-    dark:bg-[#1e293b]
+    dark:bg-[#000000ff]
     dark:border-slate-700
   "
     >

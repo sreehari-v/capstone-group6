@@ -145,7 +145,7 @@ const Medication = () => {
         p-6
         bg-[var(--background-light)]
         text-[var(--text-primary)]
-        dark:bg-[#0f172a]
+        dark:bg-[#000000ff]
         dark:text-slate-200
       "
     >
@@ -156,7 +156,7 @@ const Medication = () => {
       <div
         className="
           p-4 rounded-xl mb-6
-          bg-white dark:bg-[#1e293b]
+          bg-white dark:bg-[#000000ff]
           border border-gray-200 dark:border-gray-600
         "
       >

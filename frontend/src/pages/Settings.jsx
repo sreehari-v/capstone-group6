@@ -178,7 +178,7 @@ const Settings = () => {
         p-4
         bg-[var(--background-light)]
         text-[var(--text-primary)]
-        dark:bg-[#0f172a]
+        dark:bg-[#000000ff]
         dark:text-slate-200
       "
     >
@@ -216,7 +216,7 @@ const Settings = () => {
                       px-3 py-2 bg-white border rounded shadow-sm text-sm
                       text-slate-800
                       hover:bg-slate-50
-                      dark:bg-[#0f172a] dark:border-gray-600
+                      dark:bg-[#000000ff] dark:border-gray-600
                       dark:text-slate-200 dark:hover:bg-[#111827]
                     "
                     onClick={() => setShowEditModal(true)}
@@ -228,7 +228,7 @@ const Settings = () => {
                       px-3 py-2 bg-white border rounded shadow-sm text-sm
                       text-slate-800
                       hover:bg-slate-50
-                      dark:bg-[#0f172a] dark:border-gray-600
+                      dark:bg-[#000000ff] dark:border-gray-600
                       dark:text-slate-200 dark:hover:bg-[#111827]
                     "
                     onClick={() => setShowChangePassModal(true)}
@@ -317,7 +317,7 @@ const Settings = () => {
               <div className="mb-3">
                 <label className="block text-sm mb-1">Name</label>
                 <input
-                  className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                  className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                   value={profile.name}
                   onChange={(e) =>
                     setProfile({ ...profile, name: e.target.value })
@@ -327,7 +327,7 @@ const Settings = () => {
               <div className="mb-3">
                 <label className="block text-sm mb-1">Email</label>
                 <input
-                  className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                  className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                   value={profile.email}
                   onChange={(e) =>
                     setProfile({ ...profile, email: e.target.value })
@@ -345,7 +345,7 @@ const Settings = () => {
                     type="number"
                     min="0"
                     step="1"
-                    className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                    className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                     value={profile.age ?? ""}
                     onChange={(e) =>
                       setProfile({ ...profile, age: e.target.value })
@@ -358,7 +358,7 @@ const Settings = () => {
                     type="number"
                     min="0"
                     step="1"
-                    className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                    className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                     value={profile.height ?? ""}
                     onChange={(e) =>
                       setProfile({ ...profile, height: e.target.value })
@@ -371,7 +371,7 @@ const Settings = () => {
                     type="number"
                     min="0"
                     step="0.1"
-                    className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                    className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                     value={profile.weight ?? ""}
                     onChange={(e) =>
                       setProfile({ ...profile, weight: e.target.value })
@@ -432,7 +432,7 @@ const Settings = () => {
                       oldPass: e.target.value,
                     })
                   }
-                  className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                  className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                 />
               </div>
               <div className="mb-2">
@@ -446,7 +446,7 @@ const Settings = () => {
                       newPass: e.target.value,
                     })
                   }
-                  className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                  className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                 />
               </div>
               <div className="mb-2">
@@ -460,7 +460,7 @@ const Settings = () => {
                       confirm: e.target.value,
                     })
                   }
-                  className="w-full p-2 border rounded bg-white dark:bg-[#0f172a] dark:border-gray-600 dark:text-slate-200"
+                  className="w-full p-2 border rounded bg-white dark:bg-[#000000ff] dark:border-gray-600 dark:text-slate-200"
                 />
               </div>
               <div className="flex gap-2 justify-end mt-3">

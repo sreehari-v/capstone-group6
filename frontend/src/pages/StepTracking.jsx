@@ -20,7 +20,7 @@ const StepTracking = () => {
         p-6
         bg-[var(--background-light)]
         text-[var(--text-primary)]
-        dark:bg-[#0f172a]
+        dark:bg-[#000000ff]
         dark:text-slate-200
       "
       style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}
