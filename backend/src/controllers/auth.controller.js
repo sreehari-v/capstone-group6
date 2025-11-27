@@ -118,6 +118,7 @@ export const logout = (req, res) => {
     // Clear both access and refresh cookies
     res.clearCookie("token", { path: "/" });
     res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("csrfToken", { path: "/" });
     res.json({ message: "Logged out" });
 };
 
@@ -126,6 +127,14 @@ export const logout = (req, res) => {
 // ===========================
 export const me = async (req, res) => {
     try {
+        // Debug: log cookie keys to help diagnose 401s during development
+        try {
+            const ck = Object.keys(req.cookies || {});
+            console.log('me: incoming cookies ->', ck);
+        } catch (e) {
+            console.log('me: failed to read cookies', e);
+        }
+
         const token = req.cookies?.token;
         if (!token)
             return res.status(401).json({ message: "Not authenticated" });
@@ -151,10 +160,13 @@ export const me = async (req, res) => {
             email: user.email,
             avatar: user.avatar,
             authProvider: user.authProvider,
+            age: user.age ?? null,
+            height: user.height ?? null,
+            weight: user.weight ?? null,
             csrfToken,
         });
     } catch (err) {
-        console.error("me error:", err);
+        console.error("me error:", err && err.message ? err.message : err);
         return res.status(401).json({ message: "Invalid token" });
     }
 };
@@ -297,6 +309,7 @@ export const login = async (req, res) => {
         res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
         res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
 
+
         // Issue a non-httpOnly CSRF token for double-submit protection
         const csrfToken = crypto.randomBytes(24).toString("hex");
         res.cookie("csrfToken", csrfToken, {
@@ -329,6 +342,7 @@ export const refresh = async (req, res) => {
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ message: "User not found" });
 
+
         const newToken = generateToken(user);
         const isProd = process.env.NODE_ENV === "production";
         res.cookie("token", newToken, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
@@ -343,9 +357,139 @@ export const refresh = async (req, res) => {
             path: "/",
         });
 
+        // Note: refresh-token session tracking removed — keep refresh cookie as-is
+
         return res.json({ ok: true, csrfToken });
     } catch (err) {
         console.error("Refresh token error:", err);
         return res.status(401).json({ message: "Refresh failed" });
+    }
+};
+
+// ===========================
+// Update profile
+// PUT /api/auth/profile
+// ===========================
+export const updateProfile = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { name, email, avatar, age, height, weight } = req.body || {};
+        if (typeof name === 'string' && name.trim()) user.name = name.trim();
+        if (typeof email === 'string' && email.trim()) user.email = email.trim();
+        if (typeof avatar === 'string') user.avatar = avatar;
+
+        // Accept numeric profile fields if provided
+        if (age !== undefined && age !== null && age !== '') {
+            const n = Number(age);
+            if (!Number.isNaN(n)) user.age = n;
+        }
+        if (height !== undefined && height !== null && height !== '') {
+            const n = Number(height);
+            if (!Number.isNaN(n)) user.height = n;
+        }
+        if (weight !== undefined && weight !== null && weight !== '') {
+            const n = Number(weight);
+            if (!Number.isNaN(n)) user.weight = n;
+        }
+
+        await user.save();
+
+        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar, age: user.age, height: user.height, weight: user.weight });
+    } catch (err) {
+        console.error("updateProfile error:", err);
+        return res.status(500).json({ message: "Profile update failed" });
+    }
+};
+
+// ===========================
+// List sessions for current user
+// GET /api/auth/sessions
+// ===========================
+// listSessions removed — session management was a prototype and has been reverted
+
+// ===========================
+// Revoke a single session (logout device)
+// POST /api/auth/sessions/revoke
+// body: { tokenPreview || token } (we'll accept full token)
+// ===========================
+// revokeSession removed — session management was a prototype and has been reverted
+
+// ===========================
+// Change password
+// POST /api/auth/change-password
+// ===========================
+export const changePassword = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const { oldPass, newPass } = req.body || {};
+        if (!newPass || newPass.length < 6) return res.status(400).json({ message: "New password must be at least 6 characters" });
+
+        // If user has a password, verify oldPass
+        if (user.password) {
+            const ok = await bcrypt.compare(oldPass || '', user.password);
+            if (!ok) return res.status(403).json({ message: "Current password incorrect" });
+        }
+
+        const hashed = await bcrypt.hash(newPass, 10);
+        user.password = hashed;
+        await user.save();
+
+        return res.json({ ok: true, message: "Password changed" });
+    } catch (err) {
+        console.error("changePassword error:", err);
+        return res.status(500).json({ message: "Password change failed" });
+    }
+};
+
+// ===========================
+// Delete account
+// DELETE /api/auth/delete
+// ===========================
+export const deleteAccount = async (req, res) => {
+    try {
+        const token = req.cookies?.token;
+        if (!token) return res.status(401).json({ message: "Not authenticated" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const user = await User.findById(decoded.id);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        await User.findByIdAndDelete(user._id);
+
+        // clear cookies
+        res.clearCookie('token', { path: '/' });
+        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('csrfToken', { path: '/' });
+
+        return res.json({ ok: true, message: 'Account deleted' });
+    } catch (err) {
+        console.error('deleteAccount error:', err);
+        return res.status(500).json({ message: 'Delete failed' });
+    }
+};
+
+// ===========================
+// Logout all devices (best-effort)
+// POST /api/auth/logout-all
+// ===========================
+export const logoutAll = async (req, res) => {
+    try {
+        // Clear cookies for this client (no server-side session store)
+        res.clearCookie('token', { path: '/' });
+        res.clearCookie('refreshToken', { path: '/' });
+        res.clearCookie('csrfToken', { path: '/' });
+        return res.json({ ok: true, message: 'Logged out (client cookies cleared)' });
+    } catch (err) {
+        console.error('logoutAll error:', err);
+        return res.status(500).json({ message: 'Logout-all failed' });
     }
 };

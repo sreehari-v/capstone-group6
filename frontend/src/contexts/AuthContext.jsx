@@ -1,5 +1,5 @@
-import React, { createContext, useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { createContext, useEffect, useState, useCallback, useRef } from "react";
+import axios from "axios";
 
 const AuthContext = createContext(null);
 
@@ -8,41 +8,111 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [csrfToken, setCsrfToken] = useState(null);
 
-  const apiBase = import.meta.env.REACT_APP_API_BASE || 'http://localhost:5000';
+  const apiBase =
+    import.meta.env.VITE_API_BASE ||
+    import.meta.env.REACT_APP_API_BASE ||
+    "http://localhost:5000";
 
-  const fetchMe = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(`${apiBase}/api/auth/me`, { withCredentials: true });
-      setUser(res.data);
-      const ct = res.data?.csrfToken || null;
-      setCsrfToken(ct);
-      if (ct) axios.defaults.headers.common["X-CSRF-Token"] = ct;
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+  // --- Clear everything safely ---
+  const hardResetAuth = () => {
+    setUser(null);
+    setCsrfToken(null);
+    delete axios.defaults.headers.common["X-CSRF-Token"];
+    localStorage.clear();
   };
+
+  // track whether we've already attempted a refresh during this provider lifecycle
+  const triedRefreshRef = useRef(false);
+
+  const fetchMe = useCallback(async () => {
+    setLoading(true);
+    // Check for a suppression flag set by flows like "delete account" which
+    // intentionally clear server cookies before the client should re-check.
+    try {
+      const sup = localStorage.getItem("suppressAuthFetch");
+      if (sup) {
+        // remove flag and skip a fetch roundtrip
+        localStorage.removeItem("suppressAuthFetch");
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+
+    try {
+      const res = await axios.get(`${apiBase}/api/auth/me`, {
+        withCredentials: true
+      });
+
+      setUser(res.data);
+      if (res.data?.csrfToken) {
+        setCsrfToken(res.data.csrfToken);
+        axios.defaults.headers.common["X-CSRF-Token"] = res.data.csrfToken;
+      }
+      // successful fetch → we can allow future refresh attempts if needed later
+      triedRefreshRef.current = false;
+    } catch (err) {
+      // If we get 401 → attempt refresh ONCE per provider lifecycle
+      const status = err?.response?.status;
+      console.debug("AuthContext.fetchMe: /me failed", { status, message: err?.message });
+
+      if (status === 401 && !triedRefreshRef.current) {
+        triedRefreshRef.current = true;
+        try {
+          const r = await axios.post(
+            `${apiBase}/api/auth/refresh`,
+            {},
+            { withCredentials: true }
+          );
+
+          if (r?.data?.csrfToken) {
+            setCsrfToken(r.data.csrfToken);
+            axios.defaults.headers.common["X-CSRF-Token"] = r.data.csrfToken;
+          }
+
+          // retry me once
+          try {
+            const retry = await axios.get(`${apiBase}/api/auth/me`, {
+              withCredentials: true
+            });
+            setUser(retry.data);
+          } catch (retryErr) {
+            console.debug("AuthContext.fetchMe: retry /me failed", retryErr?.response?.status || retryErr?.message);
+            hardResetAuth();
+          }
+        } catch (refreshErr) {
+          console.debug("AuthContext.fetchMe: refresh failed", refreshErr?.response?.status || refreshErr?.message);
+          // refresh also failed → user is logged out OR deleted
+          hardResetAuth();
+        }
+      } else {
+        // non-401 or already tried refresh → treat as logged out
+        if (status !== 401) console.debug("AuthContext.fetchMe: non-401 error", err);
+        hardResetAuth();
+      }
+    }
+
+    setLoading(false);
+  }, [apiBase]);
 
   useEffect(() => {
     fetchMe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fetchMe]);
 
   const logout = async () => {
     try {
       await axios.post(`${apiBase}/api/auth/logout`, {}, { withCredentials: true });
-    } catch {
-      // ignore
+    } catch (err) {
+      console.debug("AuthContext.logout: logout request failed", err?.response?.status || err?.message);
     }
-    setUser(null);
-    setCsrfToken(null);
-    delete axios.defaults.headers.common["X-CSRF-Token"];
+    hardResetAuth();
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, fetchMe, logout, csrfToken }}>
+    <AuthContext.Provider
+      value={{ user, setUser, loading, fetchMe, logout, csrfToken, hardResetAuth }}
+    >
       {children}
     </AuthContext.Provider>
   );

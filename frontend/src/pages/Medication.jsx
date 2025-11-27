@@ -14,7 +14,6 @@ const Medication = () => {
   });
   const [editId, setEditId] = useState(null);
 
-  // const user = JSON.parse(localStorage.getItem("user"));
   useEffect(() => {
     fetchMedicines();
   }, []);
@@ -26,24 +25,13 @@ const Medication = () => {
     if (sortFilter !== "All") {
       sorted = medicines.filter((m) => m.schedule === sortFilter);
     } else {
-      sorted.sort(
-        (a, b) => order.indexOf(a.schedule) - order.indexOf(b.schedule)
-      );
+      sorted.sort((a, b) => order.indexOf(a.schedule) - order.indexOf(b.schedule));
     }
 
     setFilteredMeds(sorted);
   }, [sortFilter, medicines]);
 
-  // const fetchMedicines = async () => {
-  //   try {
-  //     const res = await axios.get("http://localhost:5000/api/medicines");
-  //     setMedicines(res.data);
-  //   } catch (error) {
-  //     console.error("Fetch error:", error);
-  //   }
-  // };
-
-    const fetchMedicines = async () => {
+  const fetchMedicines = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/medicines", {
         withCredentials: true,
@@ -75,7 +63,7 @@ const Medication = () => {
   };
 
   const handleScheduleChange = (value) => {
-    setForm({ ...form, schedule: value }); // only one selected
+    setForm({ ...form, schedule: value });
   };
 
   const handleSubmit = async (e) => {
@@ -85,26 +73,30 @@ const Medication = () => {
 
     try {
       if (editId) {
-        await axios.put(`http://localhost:5000/api/medicines/${editId}`,
-        form,
-        {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
+        await axios.put(
+          `http://localhost:5000/api/medicines/${editId}`,
+          form,
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
         );
         setEditId(null);
       } else {
-        await axios.post("http://localhost:5000/api/medicines", 
-        form,
-        {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        await axios.post(
+          "http://localhost:5000/api/medicines",
+          form,
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
       }
+
       setForm({
         name: "",
         dosage: "",
@@ -112,26 +104,26 @@ const Medication = () => {
         time: "",
         beforeFood: false,
       });
+
       fetchMedicines();
-    } catch (error) {
-      console.error("Submit error:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this medicine?"))
       return;
+
     try {
-      await axios.delete(`http://localhost:5000/api/medicines/${id}`,
-      {
+      await axios.delete(`http://localhost:5000/api/medicines/${id}`, {
         withCredentials: true,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       });
+
       fetchMedicines();
-    } catch (error) {
-      console.error("Delete error:", error);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -148,107 +140,142 @@ const Medication = () => {
 
   return (
     <div
-      className="layout-content-container flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto"
+      className="
+        flex flex-col max-w-[960px] w-full flex-1 overflow-y-auto
+        p-6
+        bg-[var(--background-light)]
+        text-[var(--text-primary)]
+        dark:bg-[#0f172a]
+        dark:text-slate-200
+      "
     >
-      <div className="flex flex-wrap justify-between gap-3 p-4">
-        <p className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72">
-          Medication
-        </p>
-      </div>
+      {/* Page Title */}
+      <h1 className="text-3xl font-bold mb-4 dark:text-white">Medication</h1>
 
-      <div className="flex flex-wrap justify-between gap-3 p-4">
-        <p className="text-[#0d171b] tracking-light text-[24px] font-bold leading-tight min-w-72">
+      {/* Add/Edit Form */}
+      <div
+        className="
+          p-4 rounded-xl mb-6
+          bg-white dark:bg-[#1e293b]
+          border border-gray-200 dark:border-gray-600
+        "
+      >
+        <h2 className="text-xl font-bold mb-3 dark:text-white">
           {editId ? "Edit Medicine" : "Add Medicine"}
-        </p>
-      </div>
+        </h2>
 
-      <form onSubmit={handleSubmit}>
-        <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <label className="flex flex-col min-w-40 flex-1">
-            <p className="pb-2 font-medium">Medicine Name*</p>
+        <form onSubmit={handleSubmit}>
+          {/* Name */}
+          <label className="flex flex-col mb-4">
+            <span className="font-medium mb-1">Medicine Name*</span>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
+              className="
+                rounded-lg h-12 p-3
+                bg-[#e7eff3] dark:bg-[#334155]
+                dark:text-white
+              "
               placeholder="Enter medicine name"
-              className="rounded-lg h-14 bg-[#e7eff3] p-4"
             />
           </label>
-        </div>
 
-        <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <label className="flex flex-col flex-1">
-            <p className="pb-2 font-medium">Dosage*</p>
+          {/* Dosage */}
+          <label className="flex flex-col mb-4">
+            <span className="font-medium mb-1">Dosage*</span>
             <input
               name="dosage"
               value={form.dosage}
               onChange={handleChange}
+              className="
+                rounded-lg h-12 p-3
+                bg-[#e7eff3] dark:bg-[#334155]
+                dark:text-white
+              "
               placeholder="Enter dosage"
-              className="rounded-lg h-14 bg-[#e7eff3] p-4"
             />
           </label>
-        </div>
 
-        <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <p className="pb-2 font-medium w-full">Schedule*</p>
-          {["Morning", "Afternoon", "Evening", "Night"].map((opt) => (
-            <label key={opt} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={form.schedule === opt}
-                onChange={() => handleScheduleChange(opt)}
-              />
-              {opt}
-            </label>
-          ))}
-        </div>
+          {/* Schedule */}
+          <div className="mb-4">
+            <span className="font-medium mb-2 block">Schedule*</span>
+            <div className="flex gap-4 flex-wrap">
+              {["Morning", "Afternoon", "Evening", "Night"].map((opt) => (
+                <label key={opt} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={form.schedule === opt}
+                    onChange={() => handleScheduleChange(opt)}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          </div>
 
-        <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <label className="flex flex-col flex-1">
-            <p className="pb-2 font-medium">Time*</p>
+          {/* Time */}
+          <label className="flex flex-col mb-4">
+            <span className="font-medium mb-1">Time*</span>
             <input
               type="time"
               name="time"
               value={form.time}
               onChange={handleChange}
-              className="rounded-lg h-14 bg-[#e7eff3] p-4"
+              className="
+                rounded-lg h-12 p-3
+                bg-[#e7eff3] dark:bg-[#334155]
+                dark:text-white
+              "
             />
           </label>
-        </div>
 
-        <div className="flex flex-wrap gap-4 px-4 py-3 max-w-[480px]">
-          <p className="pb-2 font-medium w-full">Take Before Food?</p>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="beforeFood"
-              checked={form.beforeFood}
-              onChange={handleChange}
-            />
-            {form.beforeFood ? "Yes (Before Food)" : "No (After Food)"}
-          </label>
-        </div>
+          {/* Before food */}
+          <div className="mb-4">
+            <span className="font-medium mb-2 block">Take Before Food?</span>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name="beforeFood"
+                checked={form.beforeFood}
+                onChange={handleChange}
+              />
+              {form.beforeFood ? "Yes (Before Food)" : "No (After Food)"}
+            </label>
+          </div>
 
-        <div className="flex px-4 py-3 justify-end">
-          <button
-            type="submit"
-            className="bg-[#1193d4] text-white px-4 py-2 rounded-lg font-bold"
-          >
-            {editId ? "Update Medicine" : "Add Medicine"}
-          </button>
-        </div>
-      </form>
+          {/* Submit */}
+          <div className="flex justify-end">
+            <button
+              className="
+                bg-blue-600 text-white px-4 py-2 rounded-lg font-bold
+                hover:bg-blue-700
+                dark:bg-blue-700 dark:hover:bg-blue-800
+              "
+            >
+              {editId ? "Update Medicine" : "Add Medicine"}
+            </button>
+          </div>
+        </form>
+      </div>
 
-      <div className="flex items-center justify-between px-4 mt-8">
-        <h2 className="text-[22px] font-bold">Scheduled Medications</h2>
+      {/* Table Header */}
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-xl font-bold dark:text-white">Scheduled Medications</h2>
+
         <div className="flex items-center gap-2">
-          <label className="font-medium text-sm text-[#0d171b]">
-            Sort by Schedule:
+          <label className="font-medium text-sm dark:text-slate-300">
+            Sort by schedule:
           </label>
+
           <select
             value={sortFilter}
             onChange={handleSortChange}
-            className="border border-gray-300 rounded-md px-2 py-1 text-sm bg-white"
+            className="
+              border border-gray-300 rounded-md px-2 py-1 text-sm
+              bg-white dark:bg-[#334155]
+              dark:text-white dark:border-gray-600
+            "
           >
             <option value="All">All</option>
             <option value="Morning">Morning</option>
@@ -258,9 +285,11 @@ const Medication = () => {
           </select>
         </div>
       </div>
-      <div className="px-4 py-3">
-        <table className="w-full border border-[#cfdfe7] rounded-lg">
-          <thead className="bg-slate-100">
+
+      {/* Table */}
+      <div className="overflow-auto rounded-xl border border-gray-200 dark:border-gray-600">
+        <table className="w-full">
+          <thead className="bg-slate-100 dark:bg-[#334155] dark:text-white">
             <tr>
               <th className="px-4 py-3 text-left">Medication</th>
               <th className="px-4 py-3 text-left">Dosage</th>
@@ -270,9 +299,10 @@ const Medication = () => {
               <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
-          <tbody>
+
+          <tbody className="dark:text-white">
             {filteredMeds.map((med) => (
-              <tr key={med._id} className="border-t">
+              <tr key={med._id} className="border-t dark:border-gray-700">
                 <td className="px-4 py-2">{med.name}</td>
                 <td className="px-4 py-2">{med.dosage}</td>
                 <td className="px-4 py-2">{med.schedule}</td>
@@ -280,27 +310,41 @@ const Medication = () => {
                 <td className="px-4 py-2">
                   {med.beforeFood ? "Before Food" : "After Food"}
                 </td>
+
                 <td className="px-4 py-2 flex gap-2">
                   <button
                     onClick={() => handleEdit(med)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded-lg"
+                    className="
+                      bg-yellow-500 text-white px-3 py-1 rounded-lg
+                      hover:bg-yellow-600
+                    "
                   >
                     Edit
                   </button>
+
                   <button
                     onClick={() => handleDelete(med._id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg"
+                    className="
+                      bg-red-500 text-white px-3 py-1 rounded-lg
+                      hover:bg-red-600
+                    "
                   >
                     Delete
                   </button>
                 </td>
               </tr>
             ))}
+
             {filteredMeds.length === 0 && (
               <tr>
-                <td colSpan="6" className="text-center py-4 text-gray-500">
-                  No medicines found for{" "}
-                  {sortFilter === "All" ? "any schedule" : sortFilter}.
+                <td
+                  colSpan="6"
+                  className="
+                    text-center py-4
+                    text-gray-500 dark:text-slate-400
+                  "
+                >
+                  No medicines found.
                 </td>
               </tr>
             )}

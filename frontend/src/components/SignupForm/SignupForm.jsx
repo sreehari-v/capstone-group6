@@ -10,11 +10,13 @@ export default function SignupForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [name, setName] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setError("");
 
     if (password !== confirmPassword) {
@@ -35,6 +37,8 @@ export default function SignupForm() {
     } catch (err) {
       console.error("Signup error:", err);
       setError(err.response?.data?.message || "Signup failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -51,6 +55,7 @@ export default function SignupForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
@@ -62,6 +67,7 @@ export default function SignupForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
@@ -73,6 +79,7 @@ export default function SignupForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
@@ -84,15 +91,29 @@ export default function SignupForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
+            disabled={isSubmitting}
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
 
         <button
           type="submit"
-          className="w-full py-3 px-4 bg-primary text-white rounded-md"
+          disabled={isSubmitting}
+          className={`w-full py-3 px-4 bg-primary text-white rounded-md ${
+            isSubmitting ? "opacity-60 cursor-not-allowed" : "hover:opacity-90"
+          }`}
         >
-          Sign Up
+          {isSubmitting ? (
+            <span className="flex items-center justify-center">
+              <span
+                className="inline-block w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent"
+                aria-hidden="true"
+              ></span>
+              Creating account...
+            </span>
+          ) : (
+            "Sign Up"
+          )}
         </button>
       </form>
 

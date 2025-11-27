@@ -1,21 +1,39 @@
 import React from "react";
-import { Outlet } from "react-router";
 import DashNav from "../components/DashNav/DashNav";
+import { Outlet } from "react-router-dom";
 
-function DashboardLayout() {
+const DashboardLayout = () => {
   return (
-    <div className="h-screen bg-background-light flex">
+    <div
+      className="
+        flex
+        min-h-screen
+        w-full
+        bg-[var(--background-light)]
+        text-[var(--text-primary)]
+        dark:bg-[#0f172a]
+        dark:text-slate-200
+      "
+    >
+      {/* Sidebar */}
+      <DashNav />
 
-        <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 min-h-0">
-          <DashNav />
-          <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
-            <div className="px-4 py-6">
-              <Outlet />
-            </div>
-          </main>
-        </div>
-      </div>
+      {/* Main Page */}
+      <main
+        className="
+          flex-1
+          overflow-y-auto
+          p-6
+          bg-[var(--background-light)]
+          dark:bg-[#0f172a]
+          dark:text-slate-200
+          transition-colors
+        "
+      >
+        <Outlet />
+      </main>
+    </div>
   );
-}
+};
 
 export default DashboardLayout;

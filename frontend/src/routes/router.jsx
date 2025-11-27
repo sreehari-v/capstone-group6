@@ -14,6 +14,8 @@ import DashBoard from "../pages/DashBoard";
 import StepTracking from "../pages/StepTracking";
 import Breaths from "../pages/Breaths";
 import Medication from "../pages/Medication";
+import Overview from "../pages/Overview";
+import Settings from "../pages/Settings";
 import Donate from "../pages/Donate";
 
 const router = createBrowserRouter([
@@ -27,8 +29,8 @@ const router = createBrowserRouter([
       { path: "science", element: <Science /> },
       { path: "about", element: <About /> },
       { path: "donate", element: <Donate /> },
-      {path: "*", element: <div>404 Page Not Found</div>},
-        { path: "verify-email", element: <VerifyEmail /> },
+      { path: "*", element: <div>404 Page Not Found</div> },
+      { path: "verify-email", element: <VerifyEmail /> },
     ],
   },
   { path: "/login", element: <LoginPage /> },
@@ -41,11 +43,11 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashBoard /> },
+      { index: true, element: <Overview /> },
       { path: "steps", element: <StepTracking /> },
       { path: "medication", element: <Medication /> },
       { path: "breath", element: <Breaths /> },
-
+      { path: "settings", element: <Settings /> },
     ],
   },
 ]);
