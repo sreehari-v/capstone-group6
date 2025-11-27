@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
     port: 5173,
     strictPort: true,
     cors: true,
+    allowedHosts: [
+    "localhost:5173"
+  ]
   };
 
   if (useHttps) {
