@@ -88,7 +88,13 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 const server = http.createServer(app);
 const io = new IOServer(server, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+      // allow non-browser tools or same-origin requests with no origin
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0) return callback(new Error('No allowed origins configured'));
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Origin not allowed by Socket.IO CORS'));
+    },
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -103,4 +109,4 @@ io.on("connection", socket => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}, frontend origin: ${FRONTEND_URL}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}, allowed frontends: ${allowedOrigins.join(',') || rawFrontend || 'none'}`));
