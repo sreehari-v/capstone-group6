@@ -1,0 +1,115 @@
+/* Dashboard-wide spacing and typography
+   Applied globally for pages inside DashboardLayout via import in DashboardLayout.jsx
+*/
+
+:root {
+  --dashboard-max-width: 1100px;
+  --page-gutter: 1rem;
+  --card-radius: 0.875rem; /* 14px */
+  --card-padding: 1rem; /* 16px */
+  --muted: #6b7280;
+}
+
+/* Container that pages already use */
+.layout-content-container {
+  max-width: var(--dashboard-max-width);
+  /* left-align content on wide screens (like Breath page) */
+  margin-left: 0;
+  margin-right: auto;
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+  color: #000000;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Normalize top-level children spacing so pages align consistently */
+.layout-content-container > * {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+/* Headings */
+.layout-content-container h1,
+.layout-content-container .page-title,
+.layout-content-container p.page-title {
+  font-size: 1.75rem; /* 28px */
+  line-height: 1.05;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #000000;
+}
+
+.layout-content-container h2,
+.layout-content-container .section-title {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #000000;
+}
+
+.layout-content-container p,
+.layout-content-container .muted {
+  color: #000000;
+  line-height: 1.5;
+}
+
+/* Reduce excess margins produced by utility classes in some pages */
+.layout-content-container .mb-6,
+.layout-content-container .mt-6 {
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Card / section base style — pages already use bg-white but this normalizes spacing */
+.layout-content-container .section-card,
+.layout-content-container .card {
+  background: #ffffff;
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+/* Make sure cards have consistent spacing between them */
+.layout-content-container .section-card + .section-card,
+.layout-content-container .card + .card {
+  margin-top: 1rem;
+}
+
+/* Tighten up grid gaps and card spacing */
+.layout-content-container .grid {
+  gap: 1rem;
+}
+
+/* Tables */
+.layout-content-container table {
+  border-collapse: collapse;
+}
+.layout-content-container th,
+.layout-content-container td {
+  padding: 0.75rem 0.875rem;
+}
+
+/* Buttons inside dashboard */
+.layout-content-container .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+/* Responsive tweaks */
+@media (min-width: 768px) {
+  .layout-content-container {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  .layout-content-container h1 { font-size: 2rem; }
+}
+
+@media (min-width: 1024px) {
+  .layout-content-container { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .layout-content-container h1 { font-size: 2.25rem; }
+}
