@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 const Medication = () => {
@@ -18,9 +18,25 @@ const Medication = () => {
     import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
 
   // const user = JSON.parse(localStorage.getItem("user"));
+  // fetch medicines on mount
+  const fetchMedicines = useCallback(async () => {
+    try {
+      const res = await axios.get(`${apiBase}/api/medicines`, {
+        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      setMedicines(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [apiBase]);
+
   useEffect(() => {
     fetchMedicines();
-  }, []);
+  }, [fetchMedicines]);
 
   useEffect(() => {
     const order = ["Morning", "Afternoon", "Evening", "Night"];
@@ -46,20 +62,7 @@ const Medication = () => {
   //   }
   // };
 
-    const fetchMedicines = async () => {
-    try {
-      const res = await axios.get(`${apiBase}/api/medicines`, {
-        withCredentials: true,
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
 
-      setMedicines(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const handleSortChange = (e) => {
     const selected = e.target.value;
@@ -262,53 +265,65 @@ const Medication = () => {
         </div>
       </div>
       <div className="px-4 py-3">
-        <table className="w-full border border-[#cfdfe7] rounded-lg">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="px-4 py-3 text-left">Medication</th>
-              <th className="px-4 py-3 text-left">Dosage</th>
-              <th className="px-4 py-3 text-left">Schedule</th>
-              <th className="px-4 py-3 text-left">Time</th>
-              <th className="px-4 py-3 text-left">Before Food</th>
-              <th className="px-4 py-3 text-left">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredMeds.map((med) => (
-              <tr key={med._id} className="border-t">
-                <td className="px-4 py-2">{med.name}</td>
-                <td className="px-4 py-2">{med.dosage}</td>
-                <td className="px-4 py-2">{med.schedule}</td>
-                <td className="px-4 py-2">{med.time}</td>
-                <td className="px-4 py-2">
-                  {med.beforeFood ? "Before Food" : "After Food"}
-                </td>
-                <td className="px-4 py-2 flex gap-2">
-                  <button
-                    onClick={() => handleEdit(med)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded-lg"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(med._id)}
-                    className="bg-red-500 text-white px-3 py-1 rounded-lg"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {filteredMeds.length === 0 && (
+        {/* Mobile: stacked cards (hide on md+) */}
+        <div className="md:hidden space-y-3">
+          {filteredMeds.length === 0 && (
+            <div className="text-center py-4 text-gray-500">No medicines found for {sortFilter === "All" ? "any schedule" : sortFilter}.</div>
+          )}
+
+          {filteredMeds.map((med) => (
+            <div key={med._id} className="border rounded-lg p-4 bg-white">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-lg break-words">{med.name}</div>
+                  <div className="text-sm text-gray-600 mt-1 break-words">{med.dosage} • {med.beforeFood ? "Before" : "After"} food</div>
+                  <div className="text-sm text-gray-500 mt-1">{med.schedule} • {med.time || "—"}</div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => handleEdit(med)} className="flex-1 bg-yellow-500 text-white px-3 py-2 rounded-lg">Edit</button>
+                <button onClick={() => handleDelete(med._id)} className="flex-1 bg-red-500 text-white px-3 py-2 rounded-lg">Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop/tablet: show table on md+ */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-[720px] w-full border border-[#cfdfe7] rounded-lg">
+            <thead className="bg-slate-100">
               <tr>
-                <td colSpan="6" className="text-center py-4 text-gray-500">
-                  No medicines found for{" "}
-                  {sortFilter === "All" ? "any schedule" : sortFilter}.
-                </td>
+                <th className="px-4 py-3 text-left">Medication</th>
+                <th className="px-4 py-3 text-left">Dosage</th>
+                <th className="px-4 py-3 text-left">Schedule</th>
+                <th className="px-4 py-3 text-left">Time</th>
+                <th className="px-4 py-3 text-left">Before Food</th>
+                <th className="px-4 py-3 text-left">Actions</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredMeds.map((med) => (
+                <tr key={med._id} className="border-t">
+                  <td className="px-4 py-2 break-words whitespace-normal">{med.name}</td>
+                  <td className="px-4 py-2 break-words whitespace-normal">{med.dosage}</td>
+                  <td className="px-4 py-2">{med.schedule}</td>
+                  <td className="px-4 py-2">{med.time}</td>
+                  <td className="px-4 py-2">{med.beforeFood ? "Before Food" : "After Food"}</td>
+                  <td className="px-4 py-2 flex gap-2">
+                    <button onClick={() => handleEdit(med)} className="bg-yellow-500 text-white px-3 py-1 rounded-lg">Edit</button>
+                    <button onClick={() => handleDelete(med._id)} className="bg-red-500 text-white px-3 py-1 rounded-lg">Delete</button>
+                  </td>
+                </tr>
+              ))}
+              {filteredMeds.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="text-center py-4 text-gray-500">No medicines found for {sortFilter === "All" ? "any schedule" : sortFilter}.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

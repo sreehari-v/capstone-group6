@@ -67,9 +67,11 @@ const Overview = () => {
     <div className="layout-content-container flex flex-col w-full flex-1 overflow-y-auto p-4">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
         <h1 className="text-3xl font-bold">Overview</h1>
-        <div className="flex gap-3">
+
+        {/* Buttons: stack below title on small screens, inline on md+ */}
+        <div className="flex flex-wrap gap-3">
           <Link to="/dashboard/steps" className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200">
             Start Walk
           </Link>
@@ -82,11 +84,11 @@ const Overview = () => {
         </div>
       </div>
 
-      {/* TOP STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  {/* TOP STATS GRID */}
+  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
 
         {/* Steps */}
-        <div className="p-4 bg-white rounded-xl shadow">
+  <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Steps Today</div>
           <div className="text-3xl font-bold mt-1">{stepsToday.toLocaleString()}</div>
           <div className="text-sm text-gray-500 mt-1">
@@ -95,7 +97,7 @@ const Overview = () => {
         </div>
 
         {/* Breathing */}
-        <div className="p-4 bg-white rounded-xl shadow">
+  <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Breathing</div>
           <div className="text-3xl font-bold mt-1">{breathLast.bpm} BPM</div>
           <div className="text-sm text-gray-600 mt-1">
@@ -111,7 +113,7 @@ const Overview = () => {
         </div>
 
         {/* Medicine Summary */}
-        <div className="p-4 bg-white rounded-xl shadow">
+  <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Medicines Today</div>
           <div className="text-3xl font-bold mt-1">{medicinesSummary.total}</div>
           <div className="text-sm text-gray-600 mt-1">
@@ -120,7 +122,7 @@ const Overview = () => {
         </div>
 
         {/* Active Session */}
-        <div className="p-4 bg-white rounded-xl shadow">
+  <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Active Session</div>
           <div className="text-xl font-bold mt-1">Mobile connected</div>
           <div className="text-sm text-gray-600">Viewer Code: {localStorage.getItem("sessionCode") || "—"}</div>
@@ -129,29 +131,29 @@ const Overview = () => {
       </div>
 
       {/* --- DAILY HEALTH SCORE MOVED UP HERE --- */}
-      <div className="bg-white rounded-xl shadow p-6 mb-6">
+  <div className="bg-white rounded-xl shadow p-6 mb-6 min-w-0">
         <h3 className="font-semibold text-lg mb-4">Daily Health Score</h3>
 
-        <div className="flex items-center justify-between">
+  <div className="flex flex-col md:flex-row items-center md:justify-between gap-4">
 
           {/* Score Text */}
-          <div>
+          <div className="min-w-0">
             <div className="text-5xl font-bold">{score}</div>
             <div className="text-sm text-gray-600 mt-1">Healthy routine maintained.</div>
           </div>
 
           {/* Circle */}
-          <div className="w-40 h-40 flex items-center justify-center rounded-full bg-gradient-to-tr from-sky-100 to-sky-200 shadow-md">
+          <div className="w-40 h-40 flex-shrink-0 flex items-center justify-center rounded-full bg-gradient-to-tr from-sky-100 to-sky-200 shadow-md">
             <div className="text-4xl font-extrabold">{score}</div>
           </div>
         </div>
       </div>
 
       {/* MIDDLE SECTION */}
-      <div className="grid md:grid-cols-3 gap-4">
+  <div className="grid md:grid-cols-3 gap-4">
 
         {/* Weekly Steps */}
-        <div className="bg-white rounded-xl shadow p-4 md:col-span-2">
+  <div className="bg-white rounded-xl shadow p-4 md:col-span-2 min-w-0">
           <h3 className="font-semibold text-lg mb-3">Weekly Steps</h3>
 
           <div className="flex items-end gap-3 h-36">
@@ -173,7 +175,7 @@ const Overview = () => {
         </div>
 
         {/* --- UPCOMING MEDICINES MOVED DOWN HERE --- */}
-        <div className="bg-white rounded-xl shadow p-4 md:col-span-1">
+  <div className="bg-white rounded-xl shadow p-4 md:col-span-1 min-w-0">
           <h3 className="font-semibold text-lg mb-3">Upcoming Medicines</h3>
 
           {medsToday.length === 0 && (
@@ -182,8 +184,8 @@ const Overview = () => {
 
           {medsToday.map((m) => (
             <div key={m._id} className="flex justify-between items-center py-2 border-b last:border-b-0">
-              <div>
-                <div className="font-medium">{m.name}</div>
+              <div className="min-w-0">
+                <div className="font-medium break-words">{m.name}</div>
                 <div className="text-sm text-gray-500">
                   {m.dosage} • {m.beforeFood ? "Before" : "After"} food
                 </div>
