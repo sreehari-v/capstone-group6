@@ -3,6 +3,31 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const DashNav = () => {
+  const { user } = useAuth();
+
+  const displayName = user?.name || "—";
+  const displayGender = user?.gender
+    ? user.gender === "prefer_not_to_say"
+      ? "Prefer not to say"
+      : user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
+    : "—";
+  const genderToColor = (g) => {
+    if (!g) return "7a7a7a"; // neutral gray
+    if (g === "male") return "3b82f6"; // blue
+    if (g === "female") return "ec4899"; // pink
+    if (g === "prefer_not_to_say") return "6b7280"; // gray
+    return "10b981"; // green for other
+  };
+
+  const getDefaultAvatar = (gender, name) => {
+    const bg = genderToColor(gender);
+    const nm = name && name.trim() ? name : "User";
+    const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(nm)}&background=${bg}&color=ffffff&size=128`;
+    return url;
+  };
+
+  const avatarUrl = user?.avatar || getDefaultAvatar(user?.gender, user?.name);
+
   return (
     <aside
       className="
@@ -18,14 +43,11 @@ const DashNav = () => {
       <div className="flex items-center gap-3">
         <div
           className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10"
-          style={{
-            backgroundImage:
-              'url("https://cdn1.iconfinder.com/data/icons/user-pictures/101/malecostume-512.png")',
-          }}
+          style={{ backgroundImage: `url("${avatarUrl}")` }}
         ></div>
         <div className="flex flex-col justify-center">
-          <h1 className="text-[#0d171b] text-base font-medium">ANK Zaman</h1>
-          <p className="text-[#4c809a] text-sm font-normal">Male</p>
+          <h1 className="text-[#0d171b] text-base font-medium">{displayName}</h1>
+          <p className="text-[#4c809a] text-sm font-normal">{displayGender}</p>
         </div>
       </div>
 

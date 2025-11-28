@@ -5,12 +5,13 @@ import MainFooter from "../components/MainFooter/MainFooter";
 
 const AppLayout = () => {
   return (
-    <div className="min-h-screen bg-background-light">
+    // Make layout a column flex so <main> can grow and push the footer to the bottom
+    <div className="min-h-screen bg-background-light flex flex-col">
       {/* Top navbar */}
       <MainNavBar />
 
-      {/* Page content under fixed navbar */}
-      <main className="pt-20 px-4 md:px-8 pb-8">
+      {/* Page content under fixed navbar; flex-1 lets the main area grow so the footer sits at the bottom */}
+      <main className="pt-20 px-4 md:px-8 pb-8 flex-1">
         <Outlet />
       </main>
       {/* Footer */}

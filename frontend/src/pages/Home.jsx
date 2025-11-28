@@ -1,7 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 const Home = () => {
+  const { user } = useAuth();
+
   return (
     <main className="flex-1">
       <section className="relative flex min-h-[600px] w-full items-center justify-center py-20 px-4 pt-32 md:px-10">
@@ -15,25 +18,27 @@ const Home = () => {
             data-driven insights and personalized breathing programs.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              to="/register"
-              className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-primary text-base font-bold shadow-lg"
-            >
-              <span className="truncate">Get Started</span>
-            </Link>
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-primary text-base font-bold shadow-lg"
+              >
+                <span className="truncate">Dashboard</span>
+              </Link>
+            ) : (
+              <Link
+                to="/register"
+                className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-primary text-base font-bold shadow-lg"
+              >
+                <span className="truncate">Get Started</span>
+              </Link>
+            )}
 
             <Link
               to="/features"
               className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm"
             >
               <span className="truncate">Learn More</span>
-            </Link>
-
-            <Link
-              to="/dashboard"
-              className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm"
-            >
-              <span className="truncate">Dashboard (Test)</span>
             </Link>
           </div>
         </div>

@@ -744,7 +744,17 @@ export default function BreathTracker({
               : "bg-slate-700 hover:bg-slate-600"
           }`}
         >
-          {joinPending ? "Joining..." : "Join"}
+          {joinPending ? (
+            <span className="inline-flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className="inline-block rounded-full animate-spin"
+                style={{ width: 16, height: 16, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#ffffff' }}
+              />
+            </span>
+          ) : (
+            "Join"
+          )}
         </button>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4">
