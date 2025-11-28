@@ -145,10 +145,10 @@ const Settings = () => {
 				<div className="text-sm text-gray-500">Manage your profile, preferences, and account.</div>
 			</div>
 
-			<div className="grid md:grid-cols-2 gap-6">
-				<section className="bg-white rounded shadow p-6 overflow-hidden">
+			<div className="grid md:grid-cols-1 gap-6">
+				<section className="section-card overflow-hidden">
 					<div className="md:flex md:items-center md:gap-6">
-						<div className="flex items-center gap-4">
+						<div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
 							<div className="w-20 h-20 rounded-full bg-slate-200 overflow-hidden">
 								{profile.avatar ? (
 									<img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -156,14 +156,14 @@ const Settings = () => {
 									<img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || 'User')}&background=${(profile.gender === 'female' ? 'ec4899' : profile.gender === 'male' ? '3b82f6' : profile.gender === 'prefer_not_to_say' ? '6b7280' : '10b981')}&color=ffffff&size=128`} alt="Default avatar" className="w-full h-full object-cover" />
 								)}
 							</div>
-							<div>
+							<div className="text-center md:text-left">
 								<div className="text-lg font-semibold">{profile.name || '—'}</div>
 								<div className="text-sm text-gray-500">{profile.email || '—'}</div>
 							</div>
 						</div>
-						<div className="mt-4 md:mt-0 md:ml-auto flex items-center gap-2">
-							<button className="px-3 py-2 bg-white border rounded shadow-sm text-sm" onClick={() => setShowEditModal(true)}>Edit Profile</button>
-							<button className="px-3 py-2 bg-white border rounded shadow-sm text-sm" onClick={() => setShowChangePassModal(true)}>Change Password</button>
+						<div className="mt-4 md:mt-0 md:ml-auto flex items-center gap-2 justify-center md:justify-end mb-6">
+							<button className="btn btn-outline" onClick={() => setShowEditModal(true)}>Edit Profile</button>
+							<button className="btn btn-outline" onClick={() => setShowChangePassModal(true)}>Change Password</button>
 						</div>
 					</div>
 					<div className="mt-6 grid grid-cols-2 gap-3">
@@ -184,12 +184,10 @@ const Settings = () => {
 							<div className="text-lg font-medium text-slate-800">{profile.weight ? `${profile.weight} kg` : '—'}</div>
 						</div>
 					</div>
-					<div className="mt-4 border-t pt-4"><button className="text-red-600" onClick={handleDelete}>Delete Account</button></div>
+					<div className="mt-4 border-t pt-4"><button className="btn btn-danger" onClick={handleDelete}>Delete Account</button></div>
 				</section>
 
-				{/* Security section removed */}
-
-				<section className="bg-white rounded shadow p-6 md:col-span-2">
+				<section className="section-card shadow p-6">
 					<h3 className="font-semibold mb-3">About</h3>
 					<div className="text-sm">App Version: 1.0.0</div>
 					<div className="mt-2 flex gap-4"><a href="#" className="text-blue-600">Terms & Conditions</a><a href="#" className="text-blue-600">Privacy Policy</a><a href="mailto:support@example.com" className="text-blue-600">Contact Support</a></div>
@@ -241,8 +239,8 @@ const Settings = () => {
 								</div>
 							</div>
 							<div className="flex gap-2 justify-end mt-4">
-								<button type="button" className="px-3 py-2 bg-slate-100 rounded" onClick={() => setShowEditModal(false)}>Cancel</button>
-								<button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded inline-flex items-center justify-center" disabled={savingProfile} aria-busy={savingProfile}>
+								<button type="button" className="btn btn-outline" onClick={() => setShowEditModal(false)}>Cancel</button>
+								<button type="submit" className="btn btn-primary" disabled={savingProfile} aria-busy={savingProfile}>
 									{savingProfile ? (
 										<span className="inline-flex items-center gap-2" role="status" aria-live="polite">
 											<span className="inline-block rounded-full animate-spin" style={{ width: 16, height: 16, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} aria-hidden="true" />
@@ -279,8 +277,8 @@ const Settings = () => {
 								<input type="password" value={passwordForm.confirm} onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })} className="w-full p-2 border rounded" />
 							</div>
 							<div className="flex gap-2 justify-end mt-3">
-								<button type="button" className="px-3 py-2 bg-slate-100 rounded" onClick={() => setShowChangePassModal(false)}>Cancel</button>
-								<button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded inline-flex items-center justify-center" disabled={changingPass} aria-busy={changingPass}>
+								<button type="button" className="btn btn-outline" onClick={() => setShowChangePassModal(false)}>Cancel</button>
+								<button type="submit" className="btn btn-primary" disabled={changingPass} aria-busy={changingPass}>
 									{changingPass ? (
 										<span className="inline-flex items-center gap-2" role="status" aria-live="polite">
 											<span className="inline-block rounded-full animate-spin" style={{ width: 16, height: 16, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)', borderTopColor: '#fff' }} aria-hidden="true" />
@@ -297,8 +295,8 @@ const Settings = () => {
 			)}
 
 			{showDeleteConfirm && (
-				<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded w-full max-w-sm p-6"><h3 className="text-lg font-semibold mb-3">Delete Account</h3><p className="text-sm text-gray-600">This action is permanent. Are you sure you want to delete your account?</p><div className="flex gap-2 justify-end mt-4"><button className="px-3 py-2 bg-slate-100 rounded" onClick={() => setShowDeleteConfirm(false)}>Cancel</button><button className="px-3 py-2 bg-red-600 text-white rounded" onClick={() => { setShowDeleteConfirm(false); handleDelete(); }}>Delete</button></div></div></div>
-			)}
+							<div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center"><div className="bg-white rounded w-full max-w-sm p-6"><h3 className="text-lg font-semibold mb-3">Delete Account</h3><p className="text-sm text-gray-600">This action is permanent. Are you sure you want to delete your account?</p><div className="flex gap-2 justify-end mt-4"><button className="btn btn-outline" onClick={() => setShowDeleteConfirm(false)}>Cancel</button><button className="btn btn-danger" onClick={() => { setShowDeleteConfirm(false); handleDelete(); }}>Delete</button></div></div></div>
+						)}
 		</div>
 	);
 };

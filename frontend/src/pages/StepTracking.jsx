@@ -14,53 +14,52 @@ const StepTracking = () => {
   }, [steps]);
 
   return (
-    <main className="relative flex min-h-screen w-full flex-col bg-slate-50">
-      <div className="layout-container flex h-full grow flex-col" style={{ fontFamily: 'Inter, "Noto Sans", sans-serif' }}>
-        <div>
-          <div className="layout-content-container flex flex-col max-w-[960px] flex-1">
-            <div className="flex flex-wrap justify-between gap-3 p-4">
-              <h1 className="text-[#0d171b] tracking-light text-[32px] font-bold leading-tight min-w-72 scroll-mt-28">
-                Step Tracking
-              </h1>
-            </div>
+    <div className="layout-content-container flex flex-col w-full flex-1 overflow-y-auto p-4">
+      <div className="flex items-start md:items-center justify-between mb-4 gap-3">
+        <h1 className="text-2xl font-bold">Step Tracking</h1>
+      </div>
 
-            <h2 className="text-[#0d171b] text-[24px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 scroll-mt-28">
-              Step Tracking Summary
-            </h2>
+      <div className="section-card mb-4">
+        <h2 className="section-title">Step Tracking Summary</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 bg-white rounded-xl shadow min-w-0">
+            <div className="text-sm text-gray-500">Daily Steps</div>
+            <div className="text-3xl font-bold mt-1">{steps.toLocaleString()}</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl shadow min-w-0">
+            <div className="text-sm text-gray-500">Weekly Steps</div>
+            <div className="text-3xl font-bold mt-1">—</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl shadow min-w-0">
+            <div className="text-sm text-gray-500">Monthly Steps</div>
+            <div className="text-3xl font-bold mt-1">—</div>
+          </div>
+        </div>
 
-            <div className="flex flex-wrap gap-4 p-4">
-              <Card label="Daily Steps" value={steps.toLocaleString()} />
-              <Card label="Weekly Steps" value="—" />
-              <Card label="Monthly Steps" value="—" />
-            </div>
+        <div className="mt-4 flex items-center gap-3">
+          {!active ? (
+            <button onClick={start} className="btn bg-[var(--primary-color)] text-white">Start Walk</button>
+          ) : (
+            <button onClick={stop} className="btn bg-slate-200 text-slate-800">Pause</button>
+          )}
+          <p className="text-sm text-gray-600">iOS requires tapping <b>Start Walk</b> to grant motion access.</p>
+        </div>
+      </div>
 
-            <div className="px-4 pb-5 flex gap-3">
-              {!active ? (
-                <button onClick={start} className="px-4 py-2 bg-blue-600 text-white rounded-lg">
-                  Start Walk
-                </button>
-              ) : (
-                <button onClick={stop} className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg">
-                  Pause
-                </button>
-              )}
-              <p className="self-center text-sm text-gray-500">
-                iOS requires tapping <b>Start Walk</b> to grant motion access.
-              </p>
-            </div>
-
-            <h2 className="text-[#0d171b] text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5 scroll-mt-28">
-              Distance and Calories
-            </h2>
-
-            <div className="flex flex-wrap gap-4 p-4">
-              <Card label="Distance Covered" value={`${distanceKm.toFixed(2)} km`} />
-              <Card label="Calories Burned" value={`${kcal.toFixed(0)} kcal`} />
-            </div>
+      <div className="section-card">
+        <h2 className="section-title">Distance and Calories</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-4 bg-white rounded-xl shadow min-w-0">
+            <div className="text-sm text-gray-500">Distance Covered</div>
+            <div className="text-2xl font-bold mt-1">{distanceKm.toFixed(2)} km</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl shadow min-w-0">
+            <div className="text-sm text-gray-500">Calories Burned</div>
+            <div className="text-2xl font-bold mt-1">{kcal.toFixed(0)} kcal</div>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

@@ -8,6 +8,10 @@
   --card-radius: 0.875rem; /* 14px */
   --card-padding: 1rem; /* 16px */
   --muted: #6b7280;
+  --primary-color: #3b82f6;
+  --primary-contrast: #ffffff;
+  --danger-color: #dc2626;
+  --muted-bg: #f1f5f9;
 }
 
 /* Container that pages already use */
@@ -69,6 +73,61 @@
   box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
   border: 1px solid rgba(15,23,42,0.04);
 }
+
+/* Themed buttons */
+.layout-content-container .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 140ms ease;
+}
+
+.layout-content-container .btn:active { transform: translateY(1px); }
+
+.layout-content-container .btn-primary,
+.layout-content-container .btn--primary {
+  background: var(--primary-color);
+  color: var(--primary-contrast);
+  box-shadow: 0 6px 14px rgba(59,130,246,0.12);
+}
+.layout-content-container .btn-primary:hover { filter:brightness(0.95); }
+
+.layout-content-container .btn-outline {
+  background: transparent;
+  color: var(--primary-color);
+  border-color: rgba(59,130,246,0.12);
+}
+
+.layout-content-container .btn-danger,
+.layout-content-container .btn--danger { background: var(--danger-color); color: #fff; }
+.layout-content-container .btn-ghost { background: transparent; color: #0f172a; }
+
+/* Small utility for pill buttons used in tables/cards */
+.layout-content-container .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.9rem; border-radius: 0.45rem; }
+
+/* Table styling inside the dashboard */
+.layout-content-container table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+.layout-content-container thead th {
+  background: var(--muted-bg);
+  color: #0f172a;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+}
+.layout-content-container tbody tr:hover { background: rgba(15,23,42,0.02); }
+.layout-content-container tbody td { vertical-align: middle; }
+.layout-content-container .table-actions button { min-width: 64px; }
+
 
 /* Make sure cards have consistent spacing between them */
 .layout-content-container .section-card + .section-card,
