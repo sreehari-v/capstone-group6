@@ -38,35 +38,45 @@ const MainNavBar = () => {
         <nav className="hidden md:flex items-center gap-8">
           <NavLink
             to="/"
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Home
           </NavLink>
 
           <NavLink
             to="/science"
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             The Science
           </NavLink>
 
           <NavLink
             to="/features"
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Features
           </NavLink>
 
           <NavLink
             to="/about"
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             About Us
           </NavLink>
 
           <NavLink
             to="/Donate"
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Donate
           </NavLink>
@@ -108,7 +118,9 @@ const MainNavBar = () => {
           <NavLink
             to="/"
             onClick={closeMenu}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Home
           </NavLink>
@@ -116,7 +128,9 @@ const MainNavBar = () => {
           <NavLink
             to="/science"
             onClick={closeMenu}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             The Science
           </NavLink>
@@ -124,7 +138,9 @@ const MainNavBar = () => {
           <NavLink
             to="/features"
             onClick={closeMenu}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Features
           </NavLink>
@@ -132,7 +148,9 @@ const MainNavBar = () => {
           <NavLink
             to="/about"
             onClick={closeMenu}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             About Us
           </NavLink>
@@ -140,7 +158,9 @@ const MainNavBar = () => {
         <NavLink
           to="/Donate"
           onClick={closeMenu}
-          className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+          className={({ isActive }) =>
+            `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+          }
         >
           Donate
         </NavLink>
@@ -149,7 +169,9 @@ const MainNavBar = () => {
           <NavLink
             to="/dashboard"
             onClick={closeMenu}
-            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--primary-color)] transition-colors"
+            className={({ isActive }) =>
+              `text-sm font-medium ${isActive ? 'text-[var(--primary-color)]' : 'text-[var(--text-secondary)]'} hover:text-[var(--primary-color)] transition-colors`
+            }
           >
             Dashboard (test)
           </NavLink>
