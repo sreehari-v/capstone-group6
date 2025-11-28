@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import './DashNav.css';
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
@@ -116,9 +117,23 @@ const MobileMenuToggle = () => {
     setOpen(!open);
   };
 
+  // Listen for external open/close events so the toggle stays in-sync
+  React.useEffect(() => {
+    const handler = (e) => {
+      const val = Boolean(e.detail?.open);
+      setOpen(val);
+    };
+    window.addEventListener('dashnav-toggle', handler);
+    return () => window.removeEventListener('dashnav-toggle', handler);
+  }, []);
+
   return (
-    <button onClick={toggle} className="p-2 rounded-md bg-white/10 hover:bg-white/20">
-      <span className="material-symbols-outlined">menu</span>
+    <button onClick={toggle} className={`p-2 rounded-md bg-white/10 hover:bg-white/20 dash-menu-toggle ${open ? 'open' : ''}`} aria-label="Toggle dashboard menu">
+      <div className={`hamburger ${open ? 'open' : ''}`} aria-hidden>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
     </button>
   );
 };
@@ -133,18 +148,23 @@ const MobileOverlay = ({ avatarUrl, displayName, displayGender }) => {
     return () => window.removeEventListener('dashnav-toggle', handler);
   }, []);
 
-  const close = () => setIsOpen(false);
+  const close = () => {
+    setIsOpen(false);
+    // notify toggle to reset its state
+    const ev = new CustomEvent('dashnav-toggle', { detail: { open: false } });
+    window.dispatchEvent(ev);
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50 md:hidden dash-overlay">
       <button aria-label="Close navigation" className="absolute inset-0 w-full h-full bg-black/50 backdrop-blur-sm" onClick={close} />
-      <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.84)] backdrop-blur-xl text-white">
+      <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.84)] backdrop-blur-xl text-white dash-panel">
         <div className="flex items-center justify-between px-6 pt-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => { setIsOpen(false); navigate('/dashboard/settings'); }}
+              onClick={() => { close(); navigate('/dashboard/settings'); }}
               className="w-12 h-12 rounded-full bg-center bg-cover flex-shrink-0 cursor-pointer"
               style={{ backgroundImage: `url("${avatarUrl}")` }}
               aria-label="Open settings"
@@ -154,7 +174,7 @@ const MobileOverlay = ({ avatarUrl, displayName, displayGender }) => {
               <div className="text-sm text-white/70">{displayGender}</div>
             </div>
           </div>
-          <button onClick={close} className="p-2 rounded-md bg-white/10 hover:bg-white/20">
+          <button onClick={close} className="p-2 rounded-md bg-white/10 hover:bg-white/20 dash-close-btn">
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>

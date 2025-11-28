@@ -101,20 +101,21 @@ const MainNavBar = () => {
 
         {/* Mobile hamburger */}
         <button
-          className="md:hidden flex items-center justify-center w-9 h-9 rounded-md border border-slate-200 bg-white text-[var(--text-primary)]"
+          className={`md:hidden flex items-center justify-center w-9 h-9 rounded-md border border-slate-200 bg-white text-[var(--text-primary)] nav-hamburger-btn ${isMobileMenuOpen ? 'open' : ''}`}
           onClick={() => setIsMobileMenuOpen((prev) => !prev)}
           aria-label="Toggle navigation menu"
         >
-          {/* Simple hamburger / close icon */}
-          <span className="material-symbols-outlined">
-            {isMobileMenuOpen ? "close" : "menu"}
-          </span>
+          <div className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`} aria-hidden>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
         </button>
       </header>
 
       {/* Mobile full-screen app-like nav (glassmorphism) */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
+        <div className="fixed inset-0 z-40 md:hidden nav-overlay">
           {/* darker translucent backdrop - click to close */}
           <button
             aria-label="Close navigation"
@@ -122,7 +123,7 @@ const MainNavBar = () => {
             onClick={closeMenu}
           />
 
-          <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.64)] backdrop-blur-lg border-t border-white/10 text-white">
+          <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.64)] backdrop-blur-lg border-t border-white/10 text-white nav-panel">
             <div className="flex items-center justify-between px-6 pt-6">
               <div className="flex items-center gap-3">
                 <div className="size-7">
@@ -144,8 +145,8 @@ const MainNavBar = () => {
               </div>
 
               <button
-                onClick={closeMenu}
-                className="p-2 rounded-md bg-white/10 hover:bg-white/20"
+                  onClick={closeMenu}
+                  className="p-2 rounded-md bg-white/10 hover:bg-white/20 nav-close-btn"
                 aria-label="Close menu"
               >
                 <span className="material-symbols-outlined">close</span>
