@@ -4,6 +4,7 @@ import { useAuth } from "../../hooks/useAuth";
 
 const DashNav = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const displayName = user?.name || "—";
   const displayGender = user?.gender
@@ -36,15 +37,17 @@ const DashNav = () => {
         `bg-transparent md:bg-slate-50`
       }
     >
-      {/* User info */}
-      <div className="flex items-center gap-3">
-        <div
-          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10"
+      {/* User info (desktop) - hidden on small screens to avoid duplicates and overflow */}
+      <div className="hidden md:flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => navigate('/dashboard/settings')}
+          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 flex-shrink-0 cursor-pointer"
           style={{ backgroundImage: `url("${avatarUrl}")` }}
+          aria-label="Open settings"
         />
-        <div className="flex flex-col justify-center">
-          <h1 className="text-white md:text-[#0d171b] text-base font-medium">{displayName}</h1>
-          <p className="text-white/70 md:text-[#4c809a] text-sm font-normal">{displayGender}</p>
+        <div className="flex flex-col justify-center min-w-0">
+          <h1 className="text-[#0d171b] text-base font-medium truncate max-w-[10rem]">{displayName}</h1>
+          <p className="text-[#4c809a] text-sm font-normal truncate max-w-[10rem]">{displayGender}</p>
         </div>
       </div>
 
@@ -76,23 +79,21 @@ const DashNav = () => {
 
       {/* Mobile / Tablet: compact header + full-screen toggle menu */}
       <div className="md:hidden">
-        <div className="flex items-center gap-3 px-4 py-3 bg-transparent justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-12 h-12"
+        <div className="flex items-center gap-3 px-4 py-3 bg-transparent justify-between min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={() => navigate('/dashboard/settings')}
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 flex-shrink-0 cursor-pointer"
               style={{ backgroundImage: `url("${avatarUrl}")` }}
+              aria-label="Open settings"
             />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-white md:text-[#0d171b]">{displayName}</span>
-              <span className="text-xs text-white/70 md:text-[#4c809a]">{displayGender}</span>
-            </div>
           </div>
 
           <MobileMenuToggle />
         </div>
 
         {/* spacer so main content won't be hidden by overlay when it opens */}
-        <div className="h-4" />
+        <div className="h-2" />
       </div>
 
       {/* FOOTER: Logout */}
@@ -124,6 +125,7 @@ const MobileMenuToggle = () => {
 
 const MobileOverlay = ({ avatarUrl, displayName, displayGender }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   React.useEffect(() => {
     const handler = (e) => setIsOpen(Boolean(e.detail?.open));
@@ -141,7 +143,12 @@ const MobileOverlay = ({ avatarUrl, displayName, displayGender }) => {
       <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.84)] backdrop-blur-xl text-white">
         <div className="flex items-center justify-between px-6 pt-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-center bg-cover" style={{ backgroundImage: `url("${avatarUrl}")` }} />
+            <button
+              onClick={() => { setIsOpen(false); navigate('/dashboard/settings'); }}
+              className="w-12 h-12 rounded-full bg-center bg-cover flex-shrink-0 cursor-pointer"
+              style={{ backgroundImage: `url("${avatarUrl}")` }}
+              aria-label="Open settings"
+            />
             <div>
               <div className="font-semibold text-lg">{displayName}</div>
               <div className="text-sm text-white/70">{displayGender}</div>
