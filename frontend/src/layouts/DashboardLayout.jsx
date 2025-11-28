@@ -1,6 +1,7 @@
 import React from "react";
 import { Outlet } from "react-router";
 import DashNav from "../components/DashNav/DashNav";
+import "../styles/dashboard.css";
 
 function DashboardLayout() {
   return (
@@ -8,8 +9,8 @@ function DashboardLayout() {
 
         <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 min-h-0">
           <DashNav />
-          <main className="flex-1 min-w-0 min-h-0 overflow-y-auto">
-            <div className="px-4 py-6">
+          <main className="flex-1 min-w-0 min-h-0 overflow-y-auto overflow-x-hidden">
+            <div className="px-4 py-4">
               <Outlet />
             </div>
           </main>

@@ -1,0 +1,68 @@
+/* Animations for mobile nav overlay and hamburger/close icons */
+
+.nav-hamburger .material-symbols-outlined {
+	transition: transform 220ms ease, opacity 180ms ease;
+}
+.nav-hamburger.open .material-symbols-outlined {
+	transform: rotate(90deg) scale(1.05);
+}
+
+.nav-close-btn .material-symbols-outlined {
+	transition: transform 220ms ease, opacity 180ms ease;
+}
+.nav-close-btn:hover .material-symbols-outlined {
+	transform: rotate(-10deg) scale(1.05);
+}
+
+/* Overlay enter animation */
+.nav-overlay {
+	animation: navOverlayIn 260ms cubic-bezier(.2,.9,.2,1) both;
+}
+.nav-panel {
+	transform-origin: top center;
+	animation: navPanelIn 300ms cubic-bezier(.2,.9,.2,1) both;
+}
+
+@keyframes navOverlayIn {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes navPanelIn {
+	from { transform: translateY(10px) scale(0.995); opacity: 0; }
+	to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Hamburger (three bars) -> X animation */
+.hamburger {
+	width: 20px;
+	height: 14px;
+	display: inline-block;
+	position: relative;
+}
+.hamburger span {
+	display: block;
+	position: absolute;
+	height: 2px;
+	width: 100%;
+	background: currentColor;
+	left: 0;
+	transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease;
+}
+.hamburger span:nth-child(1) { top: 0; }
+.hamburger span:nth-child(2) { top: 6px; }
+.hamburger span:nth-child(3) { top: 12px; }
+.hamburger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+.hamburger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+/* Nav panel glassmorphism */
+.nav-panel {
+	background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+	border: 1px solid rgba(255,255,255,0.08);
+	backdrop-filter: blur(8px) saturate(120%);
+}
+
+.nav-overlay {
+	background: rgba(2,6,23,0.5);
+}
