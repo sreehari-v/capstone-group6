@@ -1,0 +1,174 @@
+/* Dashboard-wide spacing and typography
+   Applied globally for pages inside DashboardLayout via import in DashboardLayout.jsx
+*/
+
+:root {
+  --dashboard-max-width: 1100px;
+  --page-gutter: 1rem;
+  --card-radius: 0.875rem; /* 14px */
+  --card-padding: 1rem; /* 16px */
+  --muted: #6b7280;
+  --primary-color: #3b82f6;
+  --primary-contrast: #ffffff;
+  --danger-color: #dc2626;
+  --muted-bg: #f1f5f9;
+}
+
+/* Container that pages already use */
+.layout-content-container {
+  max-width: var(--dashboard-max-width);
+  /* left-align content on wide screens (like Breath page) */
+  margin-left: 0;
+  margin-right: auto;
+  padding-left: var(--page-gutter);
+  padding-right: var(--page-gutter);
+  color: #000000;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Normalize top-level children spacing so pages align consistently */
+.layout-content-container > * {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+/* Headings */
+.layout-content-container h1,
+.layout-content-container .page-title,
+.layout-content-container p.page-title {
+  font-size: 1.75rem; /* 28px */
+  line-height: 1.05;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: #000000;
+}
+
+.layout-content-container h2,
+.layout-content-container .section-title {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #000000;
+}
+
+.layout-content-container p,
+.layout-content-container .muted {
+  color: #000000;
+  line-height: 1.5;
+}
+
+/* Reduce excess margins produced by utility classes in some pages */
+.layout-content-container .mb-6,
+.layout-content-container .mt-6 {
+  margin-top: 0 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Card / section base style — pages already use bg-white but this normalizes spacing */
+.layout-content-container .section-card,
+.layout-content-container .card {
+  background: #ffffff;
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15,23,42,0.04);
+}
+
+/* Themed buttons */
+.layout-content-container .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 140ms ease;
+}
+
+.layout-content-container .btn:active { transform: translateY(1px); }
+
+.layout-content-container .btn-primary,
+.layout-content-container .btn--primary {
+  background: var(--primary-color);
+  color: var(--primary-contrast);
+  box-shadow: 0 6px 14px rgba(59,130,246,0.12);
+}
+.layout-content-container .btn-primary:hover { filter:brightness(0.95); }
+
+.layout-content-container .btn-outline {
+  background: transparent;
+  color: var(--primary-color);
+  border-color: rgba(59,130,246,0.12);
+}
+
+.layout-content-container .btn-danger,
+.layout-content-container .btn--danger { background: var(--danger-color); color: #fff; }
+.layout-content-container .btn-ghost { background: transparent; color: #0f172a; }
+
+/* Small utility for pill buttons used in tables/cards */
+.layout-content-container .btn-sm { padding: 0.35rem 0.6rem; font-size: 0.9rem; border-radius: 0.45rem; }
+
+/* Table styling inside the dashboard */
+.layout-content-container table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+}
+.layout-content-container thead th {
+  background: var(--muted-bg);
+  color: #0f172a;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(15,23,42,0.06);
+}
+.layout-content-container tbody tr:hover { background: rgba(15,23,42,0.02); }
+.layout-content-container tbody td { vertical-align: middle; }
+.layout-content-container .table-actions button { min-width: 64px; }
+
+
+/* Make sure cards have consistent spacing between them */
+.layout-content-container .section-card + .section-card,
+.layout-content-container .card + .card {
+  margin-top: 1rem;
+}
+
+/* Tighten up grid gaps and card spacing */
+.layout-content-container .grid {
+  gap: 1rem;
+}
+
+/* Tables */
+.layout-content-container table {
+  border-collapse: collapse;
+}
+.layout-content-container th,
+.layout-content-container td {
+  padding: 0.75rem 0.875rem;
+}
+
+/* Buttons inside dashboard */
+.layout-content-container .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+/* Responsive tweaks */
+@media (min-width: 768px) {
+  .layout-content-container {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+  .layout-content-container h1 { font-size: 2rem; }
+}
+
+@media (min-width: 1024px) {
+  .layout-content-container { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .layout-content-container h1 { font-size: 2.25rem; }
+}

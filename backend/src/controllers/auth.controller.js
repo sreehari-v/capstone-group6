@@ -36,10 +36,15 @@ export const getGoogleAuthURL = (req, res) => {
         "https://www.googleapis.com/auth/userinfo.email",
     ];
 
+    // Allow passing a small state payload (e.g. gender) which Google will round-trip
+    const statePayload = {};
+    if (req.query?.gender) statePayload.gender = req.query.gender;
+
     const url = oauth2Client.generateAuthUrl({
         access_type: "offline",
         prompt: "consent",
         scope: scopes,
+        state: Object.keys(statePayload).length ? JSON.stringify(statePayload) : undefined,
     });
 
     return res.redirect(url);
@@ -58,9 +63,52 @@ export const googleCallback = async (req, res) => {
 
         const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
         const { data } = await oauth2.userinfo.get();
-        const { id: googleId, email, name, picture: avatar } = data;
+        const { id: googleId, email, name, picture: avatar, gender: googleGender } = data;
+
+        // Try to fetch extended profile info (People API) to get birthday/gender when available
+        let peopleGender = null;
+        let computedAge = null;
+        try {
+            const people = google.people({ auth: oauth2Client, version: "v1" });
+            const person = await people.people.get({ resourceName: "people/me", personFields: "birthdays,genders" });
+            if (person?.data) {
+                // genders is an array; take the first value if present
+                if (Array.isArray(person.data.genders) && person.data.genders.length) {
+                    peopleGender = person.data.genders[0].value || null;
+                }
+                // birthdays array may contain objects with a date {year, month, day}
+                if (Array.isArray(person.data.birthdays) && person.data.birthdays.length) {
+                    const b = person.data.birthdays[0].date || null;
+                    if (b && typeof b.year === "number") {
+                        const now = new Date();
+                        const by = Number(b.year);
+                        const bm = Number(b.month || 1) - 1;
+                        const bd = Number(b.day || 1);
+                        const dob = new Date(by, bm, bd);
+                        let age = now.getFullYear() - dob.getFullYear();
+                        const m = now.getMonth() - dob.getMonth();
+                        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+                        if (!Number.isNaN(age) && age >= 0) computedAge = age;
+                    }
+                }
+            }
+        } catch (pe) {
+            // People API may not return data or scopes may not have been approved — continue gracefully
+            console.warn("People API lookup failed or not permitted:", pe && pe.message ? pe.message : pe);
+        }
 
         let user = await User.findOne({ email });
+
+        // Parse any state passed through the OAuth round-trip (may include small payloads)
+        let stateGender = null;
+        try {
+            if (req.query?.state) {
+                const parsed = JSON.parse(req.query.state);
+                if (parsed?.gender) stateGender = parsed.gender;
+            }
+        } catch (e) {
+            // ignore parse errors
+        }
 
         if (!user) {
             user = await User.create({
@@ -70,16 +118,32 @@ export const googleCallback = async (req, res) => {
                 isVerified: true,
                 googleId,
                 avatar,
+                // Prefer stateGender, then People API gender, then oauth2 userinfo gender
+                gender: stateGender || peopleGender || googleGender || null,
+                // Persist computed age when available
+                age: computedAge ?? null,
             });
         } else {
+            let modified = false;
             if (!user.googleId) {
                 user.googleId = googleId;
                 user.authProvider = "google";
                 user.avatar = user.avatar || avatar;
                 // Mark existing user verified when they link via Google
                 user.isVerified = true;
-                await user.save();
+                modified = true;
             }
+            // If we have a gender from state or People API or Google's profile, persist it if not set
+            if (!user.gender && (stateGender || peopleGender || googleGender)) {
+                user.gender = stateGender || peopleGender || googleGender;
+                modified = true;
+            }
+            // Persist computed age if we have one and user.age is not set
+            if ((user.age === undefined || user.age === null) && computedAge !== null) {
+                user.age = computedAge;
+                modified = true;
+            }
+            if (modified) await user.save();
         }
 
         const token = generateToken(user);
@@ -163,6 +227,7 @@ export const me = async (req, res) => {
             age: user.age ?? null,
             height: user.height ?? null,
             weight: user.weight ?? null,
+            gender: user.gender ?? null,
             csrfToken,
         });
     } catch (err) {
@@ -176,7 +241,7 @@ export const me = async (req, res) => {
 // ===========================
 export const signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, gender } = req.body;
         if (!name || !email || !password)
             return res.status(400).json({ message: "All fields required" });
 
@@ -192,6 +257,7 @@ export const signup = async (req, res) => {
             password: hashedPassword,
             authProvider: "local",
             isVerified: false,
+            gender: gender || null,
         });
 
         // Generate a short-lived verification token (24h) and send email
@@ -201,10 +267,57 @@ export const signup = async (req, res) => {
 
         const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
 
-        const html = `<p>Hi ${user.name},</p>
-        <p>Welcome to CareOn! Please verify your email by clicking the link below:</p>
-        <p><a href="${verifyUrl}">Verify Email</a></p>
-        <p>If you didn't create an account, ignore this email.</p>`;
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const displayName = (user && typeof user.name === 'string' && user.name.trim()) ? (user.name.trim().charAt(0).toUpperCase() + user.name.trim().slice(1)) : 'User';
+        const html = `
+                <!doctype html>
+                <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width,initial-scale=1" />
+                        <title>Verify your CareOn email</title>
+                    </head>
+                    <body style="margin:0;padding:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fb;color:#0f1720;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                                                        <tr>
+                                                                            <td style="padding:48px 0 20px 0; text-align:center;">
+                                                                                                    <a href="${frontendUrl}" style="text-decoration:none;display:inline-block;text-align:center;">
+                                                                                                        <!-- Text-based logo for maximum compatibility -->
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#0d3b66; font-weight:800; font-size:24px; letter-spacing:0.2px;">CareOn</div>
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#64748b; font-size:12px; margin-top:4px;">Breathe better. Live healthier.</div>
+                                                                                                    </a>
+                                                                                                </td>
+                                                        </tr>
+                            <tr>
+                                <td align="center">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" width="420" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 14px 40px rgba(16,24,40,0.12);">
+                                        <tr>
+                                            <td style="padding:44px 28px;">
+                                                <h1 style="margin:0 0 8px 0;font-size:20px;color:#0d3b66;">Verify your email</h1>
+                                                <p style="margin:0 0 16px 0;color:#475569;line-height:1.45;">Hi ${displayName},</p>
+                                                <p style="margin:0 0 20px 0;color:#475569;line-height:1.45;">Thanks for creating a CareOn account. Click the button below to verify your email and finish setting up your profile.</p>
+                                                <div style="text-align:center;margin:36px 0;">
+                                                    <a href="${verifyUrl}" style="background:#0d9488;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;">Verify my email</a>
+                                                </div>
+                                                <p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
+                                                <p style="word-break:break-all;color:#0d3b66;font-size:12px;margin:0 0 8px 0;">${verifyUrl}</p>
+                                                <hr style="border:none;border-top:1px solid #eef2f6;margin:22px 0;" />
+                                                <p style="color:#64748b;font-size:13px;margin:0;">If you didn't create an account with CareOn, you can safely ignore this message.</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background:#f8fafc;padding:18px 36px;text-align:center;color:#94a3b8;font-size:13px;">CareOn - Your personal breathing & health companion<br/>Need help? <a href="mailto:support@careon.app" style="color:#0d9488;text-decoration:none;">support@careon.app</a></td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:22px 0;text-align:center;color:#94a3b8;font-size:12px;">© ${new Date().getFullYear()} CareOn. All rights reserved.</td>
+                            </tr>
+                        </table>
+                    </body>
+                </html>
+                `;
 
         let previewUrl = null;
         try {
@@ -378,7 +491,7 @@ export const updateProfile = async (req, res) => {
         const user = await User.findById(decoded.id);
         if (!user) return res.status(404).json({ message: "User not found" });
 
-        const { name, email, avatar, age, height, weight } = req.body || {};
+        const { name, email, avatar, age, height, weight, gender } = req.body || {};
         if (typeof name === 'string' && name.trim()) user.name = name.trim();
         if (typeof email === 'string' && email.trim()) user.email = email.trim();
         if (typeof avatar === 'string') user.avatar = avatar;
@@ -397,9 +510,16 @@ export const updateProfile = async (req, res) => {
             if (!Number.isNaN(n)) user.weight = n;
         }
 
+        // Accept gender if provided (allow empty to unset)
+        if (typeof gender === 'string') {
+            const g = gender.trim();
+            if (g === '') user.gender = null;
+            else user.gender = g;
+        }
+
         await user.save();
 
-        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar, age: user.age, height: user.height, weight: user.weight });
+        return res.json({ id: user._id, name: user.name, email: user.email, avatar: user.avatar, age: user.age, height: user.height, weight: user.weight, gender: user.gender });
     } catch (err) {
         console.error("updateProfile error:", err);
         return res.status(500).json({ message: "Profile update failed" });

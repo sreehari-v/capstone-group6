@@ -122,12 +122,138 @@ const io = new IOServer(server, {
   }
 });
 
-// WebSocket logic (unchanged from your code)
+// WebSocket logic: in-memory session map for producers/listeners
+// session shape: { producer: socketId, listeners: Set<socketId> }
 const sessions = new Map();
-function genCode() { return Math.floor(100000 + Math.random() * 900000).toString(); }
-io.on("connection", socket => {
+const socketSession = new Map(); // reverse lookup: socketId -> { code, role }
+function genCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+io.on("connection", (socket) => {
   console.log("ws: socket connected", socket.id);
-  // your socket events...
+
+  // Create a new session as a producer
+  socket.on("create_session", () => {
+    try {
+      let code;
+      // ensure uniqueness (very small chance of collision)
+      do {
+        code = genCode();
+      } while (sessions.has(code));
+
+      sessions.set(code, { producer: socket.id, listeners: new Set() });
+      socketSession.set(socket.id, { code, role: "producer" });
+      socket.emit("session_created", { code });
+      console.debug("ws: session created", { code, producer: socket.id });
+    } catch (e) {
+      console.warn("ws: create_session failed", e);
+      socket.emit("session_error", { message: "Failed to create session" });
+    }
+  });
+
+  // Listener asks to join a session
+  socket.on("join_session", ({ code } = {}) => {
+    try {
+      if (!code || typeof code !== "string") return socket.emit("join_error", { message: "Invalid code" });
+      const s = sessions.get(code);
+      if (!s) return socket.emit("join_error", { message: "Session not found" });
+      // optional listener limit
+      const maxListeners = 6;
+      if (s.listeners.size >= maxListeners)
+        return socket.emit("join_error", { message: "Session is full" });
+
+      s.listeners.add(socket.id);
+      socketSession.set(socket.id, { code, role: "listener" });
+
+      // tell the listener it joined and give the producer id (so listener can request a snapshot)
+      socket.emit("joined", { code, producerId: s.producer });
+
+      // notify producer that a listener joined (optional)
+      try {
+        io.to(s.producer).emit("listener_joined", { listenerId: socket.id });
+      } catch {}
+
+      console.debug("ws: listener joined", { code, listener: socket.id, producer: s.producer });
+    } catch (e) {
+      console.warn("ws: join_session failed", e);
+      socket.emit("join_error", { message: "Failed to join session" });
+    }
+  });
+
+  // Listener requests a snapshot from producer: server forwards to producer with the listener's socket id
+  socket.on("request_snapshot", ({ to } = {}) => {
+    try {
+      if (!to) return;
+      // forward request to producer, include the listener id so producer can reply
+      io.to(to).emit("request_snapshot", { to: socket.id });
+    } catch (e) {
+      console.warn("ws: request_snapshot forward failed", e);
+    }
+  });
+
+  // Producer or listener can send session_snapshot -- forward it to the target socket id
+  socket.on("session_snapshot", ({ to, snapshot } = {}) => {
+    try {
+      if (!to || !snapshot) return;
+      io.to(to).emit("session_snapshot", snapshot);
+    } catch (e) {
+      console.warn("ws: session_snapshot forward failed", e);
+    }
+  });
+
+  // Producer sends breath_data; forward to all listeners in the session
+  socket.on("breath_data", (payload = {}) => {
+    try {
+      const { code } = payload || {};
+      if (!code) return; // no session code provided
+      const s = sessions.get(code);
+      if (!s) return;
+      // forward to listeners
+      for (const lid of s.listeners) {
+        io.to(lid).emit("breath_data", payload);
+      }
+    } catch (e) {
+      console.warn("ws: breath_data forward failed", e);
+    }
+  });
+
+  // Cleanup when a socket disconnects
+  socket.on("disconnect", () => {
+    try {
+      const meta = socketSession.get(socket.id);
+      if (!meta) return;
+      const { code, role } = meta;
+      const s = sessions.get(code);
+      if (!s) {
+        socketSession.delete(socket.id);
+        return;
+      }
+
+      if (role === "producer") {
+        // notify listeners that session ended
+        for (const lid of s.listeners) {
+          try {
+            io.to(lid).emit("session_ended", { code });
+          } catch {}
+          socketSession.delete(lid);
+        }
+        sessions.delete(code);
+        console.debug("ws: producer disconnected, session ended", { code, producer: socket.id });
+      } else if (role === "listener") {
+        s.listeners.delete(socket.id);
+        // notify producer optionally
+        try {
+          io.to(s.producer).emit("listener_left", { listenerId: socket.id });
+        } catch {}
+        console.debug("ws: listener disconnected", { code, listener: socket.id });
+      }
+
+      socketSession.delete(socket.id);
+    } catch (e) {
+      console.warn("ws: disconnect handler failed", e);
+    }
+  });
 });
 
 const PORT = process.env.PORT || 5000;

@@ -87,7 +87,15 @@ export async function createTransporter() {
 export async function sendMail({ to, subject, html, text }) {
     const transporter = await createTransporter();
 
-    const from = process.env.EMAIL_FROM || `CareOn <no-reply@careon.local>`;
+    // Allow configurable display name and address. Defaults to a friendly sender name.
+    const defaultAddr = 'no-reply@careon.local';
+    const fromAddress = process.env.EMAIL_FROM_ADDRESS || defaultAddr;
+    // If EMAIL_FROM is explicitly provided (full value), prefer it; otherwise pick a random
+    // display name from the approved list and append the brand so mails read like
+    const defaultNames = ["Prince", "Sreehari", "Sandeep", "Viswa"];
+    const pick = defaultNames[Math.floor(Math.random() * defaultNames.length)];
+    const displayName = `${pick.charAt(0).toUpperCase() + pick.slice(1)} from CareOn`;
+    const from = process.env.EMAIL_FROM || `${displayName} <${fromAddress}>`;
 
     const info = await transporter.sendMail({
         from,

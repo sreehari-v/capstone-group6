@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema(
         age: { type: Number },
         height: { type: Number }, // centimeters
         weight: { type: Number }, // kilograms
+    gender: { type: String, enum: ['male', 'female', 'other', 'prefer_not_to_say'], default: null },
         // (sessions removed: session management was a prototype and has been reverted)
     },
     { timestamps: true }

@@ -11,25 +11,24 @@ const Overview = () => {
 
   const navigate = useNavigate();
 
-  // Verify user JWT session on load
+  // Verify user JWT session
   useEffect(() => {
     const verifyUser = async () => {
       try {
         await axios.get("/api/auth/me", { withCredentials: true });
       } catch {
-        return navigate("/login");
+        navigate("/login");
       }
     };
     verifyUser();
   }, [navigate]);
 
+  // Load medicines
   useEffect(() => {
     const fetchMeds = async () => {
       try {
-        const res = await axios.get("/api/medicines", {
-          withCredentials: true,
-        });
-          setMedicines(Array.isArray(res.data) ? res.data : []);
+        const res = await axios.get("/api/medicines", { withCredentials: true });
+        setMedicines(Array.isArray(res.data) ? res.data : []);
       } catch {
         setMedicines([]);
       }
@@ -50,8 +49,7 @@ const Overview = () => {
   const medicinesSummary = useMemo(() => {
     const counts = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
     medicines.forEach((m) => {
-      if (m?.schedule && counts[m.schedule] !== undefined)
-        counts[m.schedule]++;
+      if (m?.schedule && counts[m.schedule] !== undefined) counts[m.schedule]++;
     });
 
     return { counts, total: medicines.length };
@@ -75,41 +73,38 @@ const Overview = () => {
       "
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
         <h1 className="text-3xl font-bold dark:text-white">Overview</h1>
-        <div className="flex gap-3 flex-wrap">
+
+        <div className="flex flex-wrap gap-3">
           <Link
             to="/dashboard/steps"
             className="
               px-4 py-2 rounded shadow text-sm
               bg-slate-100 hover:bg-slate-200
-              text-[var(--text-primary)]
-              dark:bg-[#1e293b] dark:hover:bg-[#273549]
-              dark:text-slate-200
+              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
             "
           >
             Start Walk
           </Link>
+
           <Link
             to="/dashboard/breath"
             className="
               px-4 py-2 rounded shadow text-sm
               bg-slate-100 hover:bg-slate-200
-              text-[var(--text-primary)]
-              dark:bg-[#1e293b] dark:hover:bg-[#273549]
-              dark:text-slate-200
+              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
             "
           >
             Start Breath Tracking
           </Link>
+
           <Link
             to="/dashboard/medication"
             className="
               px-4 py-2 rounded shadow text-sm
               bg-slate-100 hover:bg-slate-200
-              text-[var(--text-primary)]
-              dark:bg-[#1e293b] dark:hover:bg-[#273549]
-              dark:text-slate-200
+              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
             "
           >
             Add Medicine
@@ -194,7 +189,6 @@ const Overview = () => {
         </h3>
 
         <div className="flex items-center justify-between flex-wrap gap-4">
-          {/* Score Text */}
           <div>
             <div className="text-5xl font-bold dark:text-white">{score}</div>
             <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
@@ -202,7 +196,6 @@ const Overview = () => {
             </div>
           </div>
 
-          {/* Circle */}
           <div className="w-40 h-40 flex items-center justify-center rounded-full bg-gradient-to-tr from-sky-100 to-sky-200 dark:from-sky-700/40 dark:to-sky-500/40 shadow-md">
             <div className="text-4xl font-extrabold dark:text-white">
               {score}
@@ -211,7 +204,7 @@ const Overview = () => {
         </div>
       </div>
 
-      {/* MIDDLE SECTION */}
+      {/* Weekly + Upcoming Section */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Weekly Steps */}
         <div className="bg-white rounded-xl shadow p-4 md:col-span-2 border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
@@ -238,7 +231,7 @@ const Overview = () => {
         </div>
 
         {/* Upcoming Medicines */}
-        <div className="bg-white rounded-xl shadow p-4 md:col-span-1 border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
+        <div className="bg-white rounded-xl shadow p-4 border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
           <h3 className="font-semibold text-lg mb-3 dark:text-white">
             Upcoming Medicines
           </h3>

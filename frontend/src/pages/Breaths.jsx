@@ -21,37 +21,36 @@ function Breaths() {
         dark:text-slate-200
       "
     >
-      {/* Page header */}
+      {/* Header */}
       <div className="flex flex-wrap justify-between gap-3 mb-4">
         <p className="tracking-light text-[32px] font-bold leading-tight min-w-72 dark:text-white">
           Breath Tracking
         </p>
       </div>
 
-      {/* Start/Pause + Reset + Sensitivity */}
-      <div className="flex justify-stretch mb-4">
-        <div className="flex flex-1 gap-3 flex-wrap justify-start items-center">
+      {/* Start / Pause / Reset Buttons */}
+      <div className="flex justify-stretch px-4 py-3">
+        <div className="flex flex-1 gap-3 flex-wrap items-center">
           <button
             onClick={() => {
               if (trackingStarted) {
-                setTrackingStarted(false);
+                setTrackingStarted(false); // pause
               } else if (everStarted) {
-                setTrackingStarted(true);
+                setTrackingStarted(true); // resume
               } else {
-                setShowStartModal(true);
+                setShowStartModal(true); // first time → modal
               }
             }}
             className="
-              flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center
-              overflow-hidden rounded-lg h-10 px-4
+              flex min-w-[84px] max-w-[480px] cursor-pointer 
+              items-center justify-center rounded-lg h-10 px-4 
               bg-[#1193d4] text-slate-50 text-sm font-bold
-              leading-normal tracking-[0.015em]
-              hover:bg-[#0f82bc]
             "
           >
             {trackingStarted ? "Pause Tracking" : "Start Tracking"}
           </button>
 
+          {/* Reset if paused & started before */}
           {!trackingStarted && everStarted && (
             <button
               onClick={() => {
@@ -60,21 +59,19 @@ function Breaths() {
                 setTrackingStarted(false);
               }}
               className="
-                flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center
-                overflow-hidden rounded-lg h-10 px-4
+                flex min-w-[84px] max-w-[480px] cursor-pointer 
+                items-center justify-center rounded-lg h-10 px-4 
                 bg-[#e7eff3] text-[#0d171b] text-sm font-bold
-                leading-normal tracking-[0.015em]
-                dark:bg-[#1e293b] dark:text-slate-200 dark:border dark:border-gray-600
               "
             >
               Reset
             </button>
           )}
 
+          {/* Sensitivity Slider */}
           <div className="flex items-center gap-2 ml-2">
-            <label className="text-sm text-gray-600 dark:text-slate-300">
-              Sensitivity
-            </label>
+            <label className="text-sm text-gray-600">Sensitivity</label>
+
             <input
               type="range"
               min={1}
@@ -90,10 +87,14 @@ function Breaths() {
               }}
             />
           </div>
+
+          <p className="text-sm text-gray-600 md:ml-auto">
+            iOS requires tapping <b>Start Walk</b> to grant motion access.
+          </p>
         </div>
       </div>
 
-      {/* Breath start modal */}
+      {/* Start Modal */}
       <BreathStartModal
         open={showStartModal}
         onStart={() => {
@@ -104,25 +105,19 @@ function Breaths() {
         onCancel={() => setShowStartModal(false)}
       />
 
-      {/* Sensor error modal */}
+      {/* Sensor Error */}
       {sensorError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-[#1e293b] dark:text-slate-200 rounded-lg p-6 w-11/12 max-w-md border border-gray-200 dark:border-gray-600">
-            <h3 className="text-lg font-bold mb-2 dark:text-white">
-              Sensor unavailable
-            </h3>
-            <p className="mb-4 text-sm text-gray-700 dark:text-slate-300">
+          <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
+            <h3 className="text-lg font-bold mb-2">Sensor unavailable</h3>
+            <p className="mb-4">
               {sensorError.message ||
                 "Motion sensor not available or permission denied."}
             </p>
             <div className="flex justify-end">
               <button
                 onClick={() => setSensorError(null)}
-                className="
-                  px-3 py-2 rounded
-                  bg-[#1193d4] text-white
-                  hover:bg-[#0f82bc]
-                "
+                className="px-3 py-2 bg-[#1193d4] text-white rounded"
               >
                 OK
               </button>
@@ -131,8 +126,8 @@ function Breaths() {
         </div>
       )}
 
-      {/* Inline BreathTracker */}
-      <div className="px-0 py-6">
+      {/* Breath Tracker */}
+      <div className="px-4 py-6">
         <div className="flex min-h-[180px] flex-1 flex-col gap-8 py-4">
           <div className="w-full">
             <BreathTracker

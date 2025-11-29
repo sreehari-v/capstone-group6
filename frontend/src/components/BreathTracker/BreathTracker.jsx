@@ -242,8 +242,37 @@ export default function BreathTracker({
       // ------------------- MAIN DATA RECEIVER -------------------
       socketRef.current.on("breath_data", (payload) => {
         if (!payload) return;
+        // quick debug
         console.debug("BreathTracker: breath_data recv", payload && { t: payload.t, breathIn: payload.breathIn, bpm: payload.bpm });
-        // Always push into buffer regardless of isListeningRef
+
+        // Immediately update lightweight UI state so listeners see data without waiting
+        try {
+          if (typeof payload.breathIn === "number") {
+            setBreathIn(payload.breathIn);
+            breathInRef.current = payload.breathIn;
+          }
+          if (typeof payload.breathOut === "number") {
+            setBreathOut(payload.breathOut);
+            breathOutRef.current = payload.breathOut;
+          }
+          if (typeof payload.bpm === "number") {
+            setBpm(Math.round(payload.bpm));
+            bpmRef.current = payload.bpm;
+          }
+          // append latest point immediately for snappy visual feedback
+          if (payload.point) {
+            setPoints((ps) => {
+              const next = ps.concat({ x: payload.point.x || payload.t, y: payload.point.y || 0 });
+              if (next.length > 400) next.shift();
+              pointsRef.current = next;
+              return next;
+            });
+          }
+        } catch {
+          // ignore UI update errors
+        }
+
+        // Also push into buffer for the regular batched flush logic (keeps aggregates coherent)
         incomingBufferRef.current.push(payload);
       });
 
@@ -715,7 +744,17 @@ export default function BreathTracker({
               : "bg-slate-700 hover:bg-slate-600"
           }`}
         >
-          {joinPending ? "Joining..." : "Join"}
+          {joinPending ? (
+            <span className="inline-flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className="inline-block rounded-full animate-spin"
+                style={{ width: 16, height: 16, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#ffffff' }}
+              />
+            </span>
+          ) : (
+            "Join"
+          )}
         </button>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-4">

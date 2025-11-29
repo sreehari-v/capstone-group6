@@ -1,41 +1,67 @@
-import React from "react";
+import React, { useState } from "react";
+import "./DashNav.css";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useDarkMode } from "../../hooks/useDarkMode";
 
 const DashNav = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const displayName = user?.name || "—";
+  const displayGender = user?.gender
+    ? user.gender === "prefer_not_to_say"
+      ? "Prefer not to say"
+      : user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
+    : "—";
+
+  const genderToColor = (gender) => {
+    if (!gender) return "7a7a7a";
+    if (gender === "male") return "3b82f6";
+    if (gender === "female") return "ec4899";
+    if (gender === "prefer_not_to_say") return "6b7280";
+    return "10b981";
+  };
+
+  const getDefaultAvatar = (gender, name) => {
+    const bg = genderToColor(gender);
+    const nm = name?.trim() ? name : "User";
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
+      nm
+    )}&background=${bg}&color=ffffff&size=128`;
+  };
+
+  const avatarUrl = user?.avatar || getDefaultAvatar(user?.gender, user?.name);
+
   return (
     <aside
       className="
-    p-4
-    w-full md:w-80
-    md:h-screen
-    overflow-y-auto
-    border-b md:border-b-0 md:border-r
-    flex flex-col gap-4
-    bg-[var(--background-light)]
-    border-slate-200
-    dark:bg-[#000000ff]
-    dark:border-slate-700
-  "
+        w-full md:w-80 md:h-screen 
+        overflow-y-auto p-4 
+        flex flex-col gap-4 
+        border-b md:border-b-0 md:border-r border-slate-200 
+        bg-[var(--background-light)]
+        dark:bg-[#000000ff] dark:border-slate-700
+      "
     >
-      {/* User info */}
-      <div className="flex items-center gap-3">
-        <div
-          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10"
-          style={{
-            backgroundImage:
-              'url("https://cdn1.iconfinder.com/data/icons/user-pictures/101/malecostume-512.png")',
-          }}
-        ></div>
-        <div className="flex flex-col justify-center">
-          <h1 className="text-[var(--text-primary)] dark:text-white text-base font-medium">ANK Zaman</h1>
-          <p className="text-[var(--text-secondary)] dark:text-slate-300 text-sm font-normal">Male</p>
+      {/* DESKTOP USER INFO */}
+      <div className="hidden md:flex items-center gap-3 min-w-0">
+        <button
+          onClick={() => navigate("/dashboard/settings")}
+          className="bg-center bg-no-repeat aspect-square bg-cover rounded-full w-10 h-10 cursor-pointer flex-shrink-0"
+          style={{ backgroundImage: `url("${avatarUrl}")` }}
+        />
+        <div className="flex flex-col justify-center min-w-0">
+          <h1 className="text-base font-medium truncate max-w-[10rem] text-[var(--text-primary)] dark:text-white">
+            {displayName}
+          </h1>
+          <p className="text-sm text-[var(--text-secondary)] dark:text-slate-300">
+            {displayGender}
+          </p>
         </div>
       </div>
 
-      {/* MAIN NAV */}
-      {/* Desktop: vertical list */}
+      {/* DESKTOP NAV */}
       <div className="hidden md:flex flex-col gap-2">
         <NavItem label="Overview" iconClass="fas fa-home" to="/dashboard" end />
         <NavItem
@@ -60,127 +86,250 @@ const DashNav = () => {
         />
       </div>
 
-      {/* Mobile: horizontal scroll bar */}
-      <div className="md:hidden -mx-4 px-4 overflow-x-auto">
-        <div className="flex gap-2">
-          <NavItem
-            label="Overview"
-            iconClass="fas fa-home"
-            to="/dashboard"
-            end
-            compact
+      {/* MOBILE HEADER */}
+      <div className="md:hidden">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => navigate("/dashboard/settings")}
+            className="w-10 h-10 bg-center bg-cover rounded-full"
+            style={{ backgroundImage: `url("${avatarUrl}")` }}
           />
-          <NavItem
-            label="Medication"
-            iconClass="fas fa-pills"
-            to="/dashboard/medication"
-            compact
-          />
-          <NavItem
-            label="Steps"
-            iconClass="fas fa-shoe-prints"
-            to="/dashboard/steps"
-            compact
-          />
-          <NavItem
-            label="Breath"
-            iconClass="fas fa-lungs"
-            to="/dashboard/breath"
-            compact
-          />
-          <NavItem
-            label="Settings"
-            iconClass="fas fa-cog"
-            to="/dashboard/settings"
-            compact
-          />
+          <MobileMenuToggle />
         </div>
       </div>
 
-      {/* FOOTER: Logout */}
-      {/* <div className="mt-auto hidden md:flex flex-col gap-2">
-        <LogoutButton />
-      </div> */}
-
-      {/* Mobile: below main nav row */}
-      {/* <div className="md:hidden flex gap-2 flex-wrap pt-2 border-t border-slate-200 mt-2">
-        <div className="w-full">
-          <LogoutButton compact />
-        </div>
-      </div> */}
-
-      {/* FOOTER SECTION */}
+      {/* DESKTOP FOOTER */}
       <div className="mt-auto hidden md:flex flex-col gap-3">
-        {/* 🌙 NEW DARK MODE BUTTON */}
         <DarkModeButton />
-
-        {/* Logout button */}
         <LogoutButton />
       </div>
 
-      {/* Mobile Footer */}
-      <div className="md:hidden flex gap-3 flex-wrap pt-2 border-t border-slate-200 mt-2">
+      {/* MOBILE FOOTER BELOW NAV */}
+      <div className="md:hidden mt-2 pt-2 border-t border-slate-200 flex gap-3 flex-wrap">
         <DarkModeButton compact />
-        <div className="w-full">
-          <LogoutButton compact />
-        </div>
       </div>
+
+      {/* MOBILE OVERLAY MENU */}
+      <MobileOverlay
+        avatarUrl={avatarUrl}
+        displayName={displayName}
+        displayGender={displayGender}
+      />
     </aside>
   );
 };
 
-const NavItem = ({ label, iconClass, to, end, compact }) => {
+/* ------------------------------- MOBILE TOGGLE ------------------------------- */
+
+const MobileMenuToggle = () => {
+  const [open, setOpen] = useState(false);
+
+  const toggle = () => {
+    const ev = new CustomEvent("dashnav-toggle", {
+      detail: { open: !open },
+    });
+    window.dispatchEvent(ev);
+    setOpen(!open);
+  };
+
+  React.useEffect(() => {
+    const handler = (e) => setOpen(Boolean(e.detail?.open));
+    window.addEventListener("dashnav-toggle", handler);
+    return () => window.removeEventListener("dashnav-toggle", handler);
+  }, []);
+
   return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        `
-        flex items-center gap-2
-        px-3 py-2 rounded-lg cursor-pointer
-        whitespace-nowrap
-        ${compact ? "text-xs" : "text-sm"}
-        ${
-          isActive
-            ? "bg-slate-200 text-[var(--text-primary)] dark:bg-slate-700 dark:text-white"
-            : "text-[var(--text-primary)] dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-        }
-      `
-      }
+    <button
+      onClick={toggle}
+      className={`p-2 rounded-md bg-white/10 hover:bg-white/20 dash-menu-toggle ${
+        open ? "open" : ""
+      }`}
+      aria-label="Toggle menu"
     >
-      <i className={`${iconClass} text-[#0d171b] text-sm`}></i>
-      <p className="font-medium">{label}</p>
-    </NavLink>
+      <div className={`hamburger ${open ? "open" : ""}`}>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </button>
   );
 };
 
-const LogoutButton = ({ compact }) => {
+/* ------------------------------- MOBILE OVERLAY ------------------------------ */
+
+const MobileOverlay = ({ avatarUrl, displayName, displayGender }) => {
+  const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
+
+  React.useEffect(() => {
+    const handler = (e) => setIsOpen(Boolean(e.detail?.open));
+    window.addEventListener("dashnav-toggle", handler);
+    return () => window.removeEventListener("dashnav-toggle", handler);
+  }, []);
+
+  const close = () => {
+    setIsOpen(false);
+    window.dispatchEvent(
+      new CustomEvent("dashnav-toggle", { detail: { open: false } })
+    );
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 md:hidden dash-overlay">
+      <button
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={close}
+      />
+      <div className="relative z-50 w-full h-full flex flex-col bg-[rgba(2,6,23,0.84)] text-white backdrop-blur-xl">
+        <div className="flex items-center justify-between px-6 pt-8">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => {
+                close();
+                navigate("/dashboard/settings");
+              }}
+              className="w-12 h-12 rounded-full bg-center bg-cover"
+              style={{ backgroundImage: `url("${avatarUrl}")` }}
+            />
+            <div>
+              <div className="text-lg font-semibold">{displayName}</div>
+              <div className="text-sm text-white/70">{displayGender}</div>
+            </div>
+          </div>
+
+          <button onClick={close} className="p-2 rounded-md bg-white/10">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <nav className="mt-10 px-6 flex-1 overflow-auto">
+          <MobileNav close={close} />
+        </nav>
+
+        <div className="px-6 pb-10">
+          <LogoutMobileButton />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ---------------------------- MOBILE NAV LINKS ---------------------------- */
+
+const MobileNav = ({ close }) => (
+  <ul className="flex flex-col gap-4">
+    <MobileNavItem to="/dashboard" icon="home" label="Overview" close={close} />
+    <MobileNavItem
+      to="/dashboard/medication"
+      icon="medication"
+      label="Medication"
+      close={close}
+    />
+    <MobileNavItem
+      to="/dashboard/steps"
+      icon="directions_walk"
+      label="Steps"
+      close={close}
+    />
+    <MobileNavItem
+      to="/dashboard/breath"
+      icon="air"
+      label="Breath"
+      close={close}
+    />
+    <MobileNavItem
+      to="/dashboard/settings"
+      icon="settings"
+      label="Settings"
+      close={close}
+    />
+  </ul>
+);
+
+const MobileNavItem = ({ to, icon, label, close }) => (
+  <li>
+    <NavLink
+      to={to}
+      onClick={close}
+      className={({ isActive }) =>
+        `flex items-center gap-4 text-xl font-medium p-3 rounded-lg ${
+          isActive
+            ? "text-[var(--primary-color)]"
+            : "text-white/90 hover:bg-white/10"
+        }`
+      }
+    >
+      <span className="material-symbols-outlined text-2xl">{icon}</span>
+      {label}
+    </NavLink>
+  </li>
+);
+
+/* -------------------------------- COMPONENTS -------------------------------- */
+
+const NavItem = ({ label, iconClass, to, end }) => (
+  <NavLink
+    to={to}
+    end={end}
+    className={({ isActive }) =>
+      `flex items-center gap-2 px-3 py-2 rounded-lg
+       ${isActive
+         ? "bg-[#e7eff3] text-[#0d171b] dark:bg-slate-700 dark:text-white"
+         : "text-[#0d171b] hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+       }`
+    }
+  >
+    <i className={`${iconClass} text-sm`}></i>
+    <p className="font-medium">{label}</p>
+  </NavLink>
+);
+
+
+const LogoutButton = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      // ignore
-    }
-    navigate('/login');
+    await logout().catch(() => {});
+    navigate("/login");
   };
 
   return (
     <button
       onClick={handleLogout}
-      className={
-      `w-full flex items-center justify-center gap-3 py-2 px-3 rounded-md transition-colors 
-      ${compact 
-        ? "text-sm bg-red-600 text-white" 
-        : "font-medium bg-red-600 text-white hover:bg-red-700"}
-        dark:bg-red-700 dark:hover:bg-red-800`
-      }
-      aria-label="Logout"
+      className="
+        w-full flex items-center justify-center 
+        gap-3 py-3 px-4 
+        rounded-md bg-red-600 text-white font-medium 
+        hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800
+      "
     >
       <i className="fas fa-sign-out-alt"></i>
-      {!compact && <span>Logout</span>}
+      Logout
+    </button>
+  );
+};
+
+const LogoutMobileButton = () => {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout().catch(() => {});
+    navigate("/login");
+  };
+
+  return (
+    <button
+      className="flex flex-col items-center text-white/90"
+      onClick={handleLogout}
+    >
+      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+        <i className="fas fa-sign-out-alt text-sm"></i>
+      </div>
+      <span className="text-xs mt-1">Logout</span>
     </button>
   );
 };
@@ -192,8 +341,8 @@ const DarkModeButton = ({ compact }) => {
     <button
       onClick={toggleDarkMode}
       className={`
-        w-full flex items-center justify-center gap-3 py-2 px-3 rounded-md 
-        border transition-colors 
+        w-full flex items-center justify-center 
+        gap-3 py-2 px-3 rounded-md border
         ${compact ? "text-xs" : "text-sm font-medium"}
         bg-[var(--background-light)] text-[var(--text-primary)]
         dark:bg-[#334155] dark:text-white dark:border-slate-600

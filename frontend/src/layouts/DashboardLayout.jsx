@@ -1,6 +1,7 @@
 import React from "react";
 import DashNav from "../components/DashNav/DashNav";
 import { Outlet } from "react-router-dom";
+import "../styles/dashboard.css";
 
 const DashboardLayout = () => {
   return (
