@@ -23,7 +23,7 @@ function Breaths() {
     >
       {/* Header */}
       <div className="flex flex-wrap justify-between gap-3 mb-4">
-        <p className="tracking-light text-[32px] font-bold leading-tight min-w-72 dark:text-white">
+        <p className="tracking-light text-[32px] font-bold leading-tight min-w-72 text-[#0d171b] dark:text-white">
           Breath Tracking
         </p>
       </div>
@@ -34,11 +34,11 @@ function Breaths() {
           <button
             onClick={() => {
               if (trackingStarted) {
-                setTrackingStarted(false); // pause
+                setTrackingStarted(false);
               } else if (everStarted) {
-                setTrackingStarted(true); // resume
+                setTrackingStarted(true);
               } else {
-                setShowStartModal(true); // first time → modal
+                setShowStartModal(true);
               }
             }}
             className="
@@ -50,7 +50,7 @@ function Breaths() {
             {trackingStarted ? "Pause Tracking" : "Start Tracking"}
           </button>
 
-          {/* Reset if paused & started before */}
+          {/* Reset Button */}
           {!trackingStarted && everStarted && (
             <button
               onClick={() => {
@@ -61,7 +61,7 @@ function Breaths() {
               className="
                 flex min-w-[84px] max-w-[480px] cursor-pointer 
                 items-center justify-center rounded-lg h-10 px-4 
-                bg-[#e7eff3] text-[#0d171b] text-sm font-bold
+                bg-[#e7eff3] text-[#0d171b] dark:text-[#0d171b] text-sm font-bold
               "
             >
               Reset
@@ -70,7 +70,9 @@ function Breaths() {
 
           {/* Sensitivity Slider */}
           <div className="flex items-center gap-2 ml-2">
-            <label className="text-sm text-gray-600">Sensitivity</label>
+            <label className="text-sm text-gray-700 dark:text-slate-300">
+              Sensitivity
+            </label>
 
             <input
               type="range"
@@ -88,8 +90,9 @@ function Breaths() {
             />
           </div>
 
-          <p className="text-sm text-gray-600 md:ml-auto">
-            iOS requires tapping <b>Start Walk</b> to grant motion access.
+          {/* iOS Notice */}
+          <p className="text-sm text-gray-600 dark:text-slate-300 md:ml-auto">
+            iOS requires tapping <b className="text-[#1193d4] dark:text-blue-400">Start Walk</b> to grant motion access.
           </p>
         </div>
       </div>
@@ -105,12 +108,14 @@ function Breaths() {
         onCancel={() => setShowStartModal(false)}
       />
 
-      {/* Sensor Error */}
+      {/* Sensor Error Modal */}
       {sensorError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
-            <h3 className="text-lg font-bold mb-2">Sensor unavailable</h3>
-            <p className="mb-4">
+          <div className="bg-white dark:bg-[#1e293b] dark:text-slate-200 rounded-lg p-6 w-11/12 max-w-md">
+            <h3 className="text-lg font-bold mb-2 dark:text-white">
+              Sensor unavailable
+            </h3>
+            <p className="mb-4 dark:text-slate-300">
               {sensorError.message ||
                 "Motion sensor not available or permission denied."}
             </p>
