@@ -61,6 +61,9 @@ const StepTracking = () => {
     try {
       const res = await axios.get(`${API_BASE}/api/steps/summary`, {
         withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
       });
       if (res?.data) {
         setSummary({
@@ -117,7 +120,12 @@ const StepTracking = () => {
             endedAt,
             durationMinutes,
           },
-          { withCredentials: true }
+          {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
         );
 
         notify("Step session saved", "success");
@@ -169,14 +177,8 @@ const StepTracking = () => {
             <h2 className="text-lg font-semibold mb-4">Current Session</h2>
             <div className="grid gap-3 md:grid-cols-3">
               <Card label="Steps" value={steps} />
-              <Card
-                label="Distance (km)"
-                value={distanceKm.toFixed(2)}
-              />
-              <Card
-                label="Calories (kcal)"
-                value={kcal.toFixed(0)}
-              />
+              <Card label="Distance (km)" value={distanceKm.toFixed(2)} />
+              <Card label="Calories (kcal)" value={kcal.toFixed(0)} />
             </div>
 
             <div className="mt-4 text-sm text-gray-600 space-y-1">
@@ -191,10 +193,12 @@ const StepTracking = () => {
                 </span>
               </p>
               <p>
-                Started at: <span className="font-medium">{formatTime(startedAt)}</span>
+                Started at:{" "}
+                <span className="font-medium">{formatTime(startedAt)}</span>
               </p>
               <p>
-                Last ended at: <span className="font-medium">{formatTime(endedAt)}</span>
+                Last ended at:{" "}
+                <span className="font-medium">{formatTime(endedAt)}</span>
               </p>
               <p>
                 Duration (active, minutes):{" "}
