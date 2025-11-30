@@ -12,6 +12,7 @@ import { Server as IOServer } from "socket.io";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
+import stepRoutes from "./routes/stepRoutes.js";
 
 dotenv.config();
 
@@ -67,6 +68,7 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/steps", stepRoutes);
 
 // Serve frontend
 const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");
