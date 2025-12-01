@@ -352,7 +352,7 @@ export default function BreathTracker({
 
       <div className="mt-4 grid grid-cols-1 gap-4">
         <div>
-          <div className="grid grid-cols-4 gap-2 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-center">
             <div className="p-3 bg-slate-100 rounded">
               <div className="text-sm">Breath In</div>
               <div className="text-2xl font-bold">{breathIn}</div>
