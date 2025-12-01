@@ -15,6 +15,7 @@ const Overview = () => {
   const [weeklyTotal, _setWeeklyTotal] = useState(0);
   const [weeklyByDay, _setWeeklyByDay] = useState([]); // new
   const [loadingSteps, _setLoadingSteps] = useState(false);
+  const [breathsSummary, setBreathsSummary] = useState({ avgRespiratoryRate: 0, sessions: 0 });
 
   const goal = 10000;
 
@@ -52,6 +53,55 @@ const Overview = () => {
       }
     };
     fetchMeds();
+  }, []);
+
+  // Load steps summary (daily/weekly) from backend
+  useEffect(() => {
+    const loadSteps = async () => {
+      _setLoadingSteps(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/steps/summary`, { withCredentials: true });
+        const data = res?.data || {};
+        // daily steps
+        const daily = data.daily || data.dailySummary || {};
+        const weekly = data.weekly || data.weeklySummary || {};
+        // weeklyByDay may be returned as weekly.byDay or weeklyByDay
+        const byDay = data.weeklyByDay || (weekly && weekly.byDay) || [];
+        _setStepsToday(Number((daily.steps || 0)));
+        _setWeeklyTotal(Number((weekly.steps || byDay.reduce((s, d) => s + (Number(d.steps) || 0), 0)) || 0));
+        _setWeeklyByDay(Array.isArray(byDay) ? byDay.map((d) => ({ date: d.date || d.t || d.day, steps: Number(d.steps || d.value || 0) })) : []);
+      } catch (err) {
+        console.warn('Failed to load steps summary', err);
+        _setStepsToday(0);
+        _setWeeklyTotal(0);
+        _setWeeklyByDay([]);
+      } finally {
+        _setLoadingSteps(false);
+      }
+    };
+    loadSteps();
+  }, []);
+
+  // Load recent breath sessions to compute a breathing summary
+  useEffect(() => {
+    const loadBreaths = async () => {
+      try {
+        const r = await axios.get(`${API_BASE}/api/breaths`, { withCredentials: true });
+        const sessions = Array.isArray(r.data) ? r.data : (r.data?.sessions || []);
+        if (sessions.length) {
+          // use the most recent session's avgRespiratoryRate if present
+          const latest = sessions[0];
+          const avg = Number(latest.avgRespiratoryRate || latest.avgBpm || 0);
+          setBreathsSummary({ avgRespiratoryRate: avg, sessions: sessions.length });
+        } else {
+          setBreathsSummary({ avgRespiratoryRate: 0, sessions: 0 });
+        }
+      } catch (err) {
+        console.warn('Failed to load breaths', err);
+        setBreathsSummary({ avgRespiratoryRate: 0, sessions: 0 });
+      }
+    };
+    loadBreaths();
   }, []);
 
   // Listen for session updates dispatched by BreathTracker (or other components)
@@ -116,10 +166,20 @@ const Overview = () => {
     return { counts, total: medicines.length };
   }, [medicines]);
 
+  // Compute a daily healthcare score based on DB-driven metrics:
+  // - stepsProgress (50%)
+  // - medicine presence (30%)
+  // - recent breathing average in normal range (20%)
+  const breathScore = (() => {
+    const avg = Number(breathsSummary.avgRespiratoryRate || 0);
+    if (!avg) return 50; // unknown
+    return avg >= 12 && avg <= 20 ? 100 : avg < 12 ? 60 : 70;
+  })();
+
   const score = Math.round(
-    0.3 * Math.min(100, stepsProgress) +
-      0.4 * (medicinesSummary.total ? 100 : 0) +
-      0.3 * 100
+    0.5 * Math.min(100, stepsProgress) +
+      0.3 * (medicinesSummary.total ? 100 : 0) +
+      0.2 * breathScore
   );
 
   const formatDayLabel = (isoDate, fallbackIndex) => {
