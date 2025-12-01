@@ -20,6 +20,7 @@ export default function BreathTracker({
   const [points, setPoints] = useState([]);
   const [bpm, setBpm] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
+  const startedAtRef = useRef(null);
   const gravityRef = useRef(0);
   const lastFiltered = useRef(0);
   const lastDir = useRef(0);
@@ -91,9 +92,11 @@ export default function BreathTracker({
   const multiplier = 1.8 - (s - 1) * 0.3; // 1 -> 1.8, 3 -> 1.2, 5 -> 0.6
   const threshold = Math.max(0.002, std * multiplier);
 
-        // set startedAt on first meaningful motion
-        if (!startedAt && Math.abs(filtered) > threshold) {
-          setStartedAt(new Date());
+        // set startedAt on first meaningful motion (use ref to ensure synchronous value)
+        if (!startedAtRef.current && Math.abs(filtered) > threshold) {
+          const nowDate = new Date();
+          startedAtRef.current = nowDate;
+          try { setStartedAt(nowDate); } catch { /* ignore */ }
           setStatus("Tracking — collecting motion data");
         }
 
@@ -148,12 +151,33 @@ export default function BreathTracker({
         setStatus('Motion listener failed');
       }
 
+      // If this device is producing a session (has a session code stored), announce streaming
+      const announceStreamingIfNeeded = () => {
+        try {
+          const code = typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null;
+          if (code) {
+            window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: true } }));
+          }
+        } catch { /* ignore */ }
+      };
+
+      // If active and we already have startedAtRef (maybe from prior events), announce now
+      if (active && startedAtRef.current) announceStreamingIfNeeded();
+
     } else {
       // stop listening and cleanup
       try {
         if (listenerRef.current) {
           try { window.removeEventListener('devicemotion', listenerRef.current, true); } catch { /* ignore */ }
           listenerRef.current = null;
+        }
+      } catch { /* ignore */ }
+
+      // announce stream ended for any active session code
+      try {
+        const code = typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null;
+        if (code) {
+          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
         }
       } catch { /* ignore */ }
 
@@ -164,8 +188,9 @@ export default function BreathTracker({
         console.debug("BreathTracker onStop callback error", err);
       }
 
-      const endedAt = new Date();
-      const durationMs = startedAt ? Math.max(0, endedAt - startedAt) : 0;
+  const endedAt = new Date();
+  const started = startedAtRef.current || startedAt || new Date(endedAt.getTime());
+  const durationMs = Math.max(0, endedAt - started);
       const durationSeconds = +(durationMs / 1000).toFixed(3);
 
       // Build the session payload with collected data. Include sample points so the
@@ -178,9 +203,12 @@ export default function BreathTracker({
         breathIn: breathIn || 0,
         breathOut: breathOut || 0,
         totalBreaths: total || 0,
-        samples: (pointsRef.current || []).map((p) => ({ t: p.x, v: p.y })),
+        // include only samples within the session window and include raw value
+        samples: (pointsRef.current || []).filter((p) => {
+          return p && p.x && p.x >= (started ? started.getTime() : 0) && p.x <= endedAt.getTime();
+        }).map((p) => ({ t: p.x, v: p.y, value: p.y })),
         // include cycle timestamps (ms) for advanced analysis if available
-        cycleTimestamps: (cycleTimesRef.current || []).slice(),
+  cycleTimestamps: (cycleTimesRef.current || []).slice(),
       };
 
       // Only persist when parent explicitly requests a save. This avoids accidental

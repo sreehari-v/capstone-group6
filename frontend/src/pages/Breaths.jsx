@@ -22,6 +22,7 @@ function Breaths() {
   const [joinCode, setJoinCode] = useState('');
   const [joining, setJoining] = useState(false);
   const [sessionInfo, setSessionInfo] = useState(() => ({ code: typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null, listeners: 0, role: null }));
+  const [hasSensor, setHasSensor] = useState(true);
 
   const notify = (message, type = 'info') => {
     try {
@@ -48,6 +49,25 @@ function Breaths() {
 
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
+  // detect whether the current device has DeviceMotion support
+  useEffect(() => {
+    try {
+      // Treat a device as sensor-capable only when it's a mobile device and
+      // DeviceMotion is available — this avoids showing mobile-only controls on
+      // desktops/laptops which sometimes expose the API but don't provide events.
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+      let available = false;
+      if (isMobile && typeof window !== 'undefined') {
+        if (typeof DeviceMotionEvent !== 'undefined') available = true;
+        else if ('ondevicemotion' in window) available = true;
+      }
+      setHasSensor(available);
+    } catch {
+      setHasSensor(false);
+    }
+  }, []);
+
   // Listen for session updates (dispatched by BreathTracker)
   useEffect(() => {
     const handler = (ev) => {
@@ -60,6 +80,7 @@ function Breaths() {
         code: d.code || prev.code,
         role: d.role || prev.role,
         listeners: typeof d.listenersCount === 'number' ? d.listenersCount : (d.role === 'listener' ? Math.max(1, prev.listeners) : prev.listeners),
+        streaming: typeof d.streaming === 'boolean' ? d.streaming : prev.streaming || false,
       }));
     };
     try { window.addEventListener('session:updated', handler); } catch (err) { void err; }
@@ -197,18 +218,30 @@ function Breaths() {
 
             <div className="lg:col-span-1">
               <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => {
-                    console.debug('Breaths: Start/Pause clicked, trackingStarted=', trackingStarted, 'everStarted=', everStarted);
-                    setSavedSessionId(null);
-                    if (trackingStarted) setTrackingStarted(false);
-                    else if (everStarted) setTrackingStarted(true);
-                    else setShowStartModal(true);
-                  }}
-                  className="btn btn-primary w-full"
-                >
-                  {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
-                </button>
+                {/* Show local tracking controls only if the device has a motion sensor, or
+                    if this is a listener device and a remote producer is streaming. */}
+                { (hasSensor || (sessionInfo && sessionInfo.role === 'listener' && sessionInfo.streaming)) ? (
+                  <button
+                    onClick={() => {
+                      console.debug('Breaths: Start/Pause clicked, trackingStarted=', trackingStarted, 'everStarted=', everStarted);
+                      setSavedSessionId(null);
+                      if (trackingStarted) setTrackingStarted(false);
+                      else if (everStarted) setTrackingStarted(true);
+                      else setShowStartModal(true);
+                    }}
+                    className="btn btn-primary w-full"
+                  >
+                    {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
+                  </button>
+                ) : (
+                  <button className="min-w-[160px] w-full cursor-pointer overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm" onClick={() => {
+                    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+                    setShareCode(code);
+                    try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                    window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
+                    setShowShareModal(true);
+                  }}>Link device</button>
+                )}
 
                 {trackingStarted && (
                   <div className="flex gap-2">
@@ -217,10 +250,12 @@ function Breaths() {
                   </div>
                 )}
 
-                <div>
-                  <label className="text-sm text-gray-600">Sensitivity</label>
-                  <input type="range" min={1} max={5} value={sensitivity} onChange={(e) => setSensitivity(Number(e.target.value))} className="w-full" style={{ accentColor: '#1193d4', background: '#e7eff3', height: 6, borderRadius: 6 }} />
-                </div>
+                {(hasSensor || (sessionInfo && sessionInfo.role === 'listener' && sessionInfo.streaming)) && (
+                  <div>
+                    <label className="text-sm text-gray-600">Sensitivity</label>
+                    <input type="range" min={1} max={5} value={sensitivity} onChange={(e) => setSensitivity(Number(e.target.value))} className="w-full" style={{ accentColor: '#1193d4', background: '#e7eff3', height: 6, borderRadius: 6 }} />
+                  </div>
+                )}
 
                 <div>
                   {sessionInfo && sessionInfo.code ? (
@@ -231,14 +266,6 @@ function Breaths() {
                       <div className="text-xs text-gray-500">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
                     </div>
                   ) : null}
-                  <button className="min-w-[160px] w-full cursor-pointer overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm" onClick={() => {
-                    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-                    setShareCode(code);
-                    // Persist code and notify other components so Active Session updates
-                    try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                    window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
-                    setShowShareModal(true);
-                  }}>Link device</button>
                   <div className="text-xs text-gray-500 mt-2">Share a code to let another device join your live session.</div>
                 </div>
 
