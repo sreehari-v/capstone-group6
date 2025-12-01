@@ -11,7 +11,7 @@ const API_BASE =
 const StepTracking = () => {
   const {
     steps,
-    active,
+    active: _active,
     status,
     isRunning,
     isPaused,
@@ -26,14 +26,14 @@ const StepTracking = () => {
 
   const { showToast } = useContext(ToastContext);
 
-  const notify = (message, type = "info") => {
+  const notify = React.useCallback((message, type = "info") => {
     try {
       if (typeof showToast === "function") showToast(message, type);
       else alert(message);
     } catch {
       alert(message);
     }
-  };
+  }, [showToast]);
 
   const [distanceKm, setDistanceKm] = useState(0);
   const [kcal, setKcal] = useState(0);
@@ -56,7 +56,7 @@ const StepTracking = () => {
     setKcal(steps * kcalPerStep);
   }, [steps]);
 
-  const loadSummary = async () => {
+  const loadSummary = React.useCallback(async () => {
     setLoadingSummary(true);
     try {
       const res = await axios.get(`${API_BASE}/api/steps/summary`, {
@@ -78,13 +78,12 @@ const StepTracking = () => {
     } finally {
       setLoadingSummary(false);
     }
-  };
+  }, [notify]);
 
   // Load daily/weekly/monthly totals once when page loads
   useEffect(() => {
     loadSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadSummary]);
 
   // When user clicks "Stop & Save"
   const handleStopAndSave = () => {
@@ -150,6 +149,8 @@ const StepTracking = () => {
     distanceKm,
     kcal,
     durationMinutes,
+    loadSummary,
+    notify,
   ]);
 
   const formatTime = (date) => {

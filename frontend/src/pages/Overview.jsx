@@ -11,10 +11,10 @@ const Overview = () => {
   const [medicines, setMedicines] = useState([]);
 
   // Steps state (coming from backend summary)
-  const [stepsToday, setStepsToday] = useState(0);
-  const [weeklyTotal, setWeeklyTotal] = useState(0);
-  const [weeklyByDay, setWeeklyByDay] = useState([]); // new
-  const [loadingSteps, setLoadingSteps] = useState(false);
+  const [stepsToday, _setStepsToday] = useState(0);
+  const [weeklyTotal, _setWeeklyTotal] = useState(0);
+  const [weeklyByDay, _setWeeklyByDay] = useState([]); // new
+  const [loadingSteps, _setLoadingSteps] = useState(false);
 
   const goal = 10000;
 

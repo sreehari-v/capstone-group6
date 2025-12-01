@@ -6,6 +6,8 @@ const breathSampleSchema = new mongoose.Schema({
   // inhale/exhale amplitude or sensor value (optional)
   inhale: { type: Number },
   exhale: { type: Number },
+  // raw sensor value (signed) for waveform reconstruction
+  value: { type: Number },
   // instantaneous respiratory rate (breaths per minute)
   rr: { type: Number },
 });

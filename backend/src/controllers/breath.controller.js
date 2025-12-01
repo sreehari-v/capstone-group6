@@ -52,7 +52,7 @@ export const createBreathSession = async (req, res) => {
             } else if (typeof p.inhale === 'number' || typeof p.exhale === 'number') {
               inhale = p.inhale; exhale = p.exhale;
             }
-            return { t, inhale, exhale, rr: p.rr };
+              return { t, inhale, exhale, rr: p.rr, value: (typeof p.v === 'number' ? p.v : (typeof p.value === 'number' ? p.value : null)) };
           })
         : [],
       notes: typeof notes === 'string' ? notes : undefined,
