@@ -25,6 +25,7 @@ function Breaths() {
   const [sessionInfo, setSessionInfo] = useState(() => ({ code: typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null, listeners: 0, role: null }));
   const [hasSensor, setHasSensor] = useState(true);
   const socketRef = useRef(null);
+  const sampleBufferRef = useRef([]);
 
   const notify = (message, type = 'info') => {
     try {
@@ -61,7 +62,15 @@ function Breaths() {
     if (!s || s.disconnected) return;
     try {
       const code = sessionInfo && sessionInfo.code ? sessionInfo.code : (typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null);
-      if (!code) console.warn('emitToSocket: no session code available, breath_data will be ignored by server', payload);
+      if (!code) {
+        // buffer the sample(s) until we have a code
+        try {
+          const arr = Array.isArray(payload) ? payload.slice() : [payload];
+          sampleBufferRef.current = (sampleBufferRef.current || []).concat(arr).slice(-1000);
+          if (sampleBufferRef.current.length % 50 === 0) console.debug('emitToSocket: buffered samples count', sampleBufferRef.current.length);
+        } catch (e) { console.warn('buffer failed', e); }
+        return;
+      }
       const enriched = {
         code,
         samples: Array.isArray(payload) ? payload : [payload],
@@ -150,6 +159,16 @@ function Breaths() {
         window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
         if (typeof notify === 'function') notify(`Session created: ${code}`, 'success');
         setShowShareModal(true);
+        // flush any buffered samples that were generated before code was available
+        try {
+          const buf = sampleBufferRef.current || [];
+          if (buf.length) {
+            console.debug('Flushing buffered samples after session_created', buf.length);
+            const enriched = { code, samples: buf.slice() };
+            try { s.emit('breath_data', enriched); } catch (e) { console.warn('flush emit failed', e); }
+            sampleBufferRef.current = [];
+          }
+        } catch (e) { console.warn('flush failed', e); }
       });
   s.on('join_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Failed to join session', 'error'); });
   s.on('session_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Session error', 'error'); });
