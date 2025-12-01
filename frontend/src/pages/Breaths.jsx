@@ -1,3 +1,5 @@
+// ⭐ FINAL CLEAN VERSION — NO MERGE CONFLICTS, UNIFIED SOCKET + EMIT LOGIC
+
 import React, {
   useState,
   useContext,
@@ -18,11 +20,9 @@ const API_BASE =
   "http://localhost:5000";
 
 function Breaths() {
-  //
   // ─────────────────────────────────────────────
-  //  STATE
+  // STATE
   // ─────────────────────────────────────────────
-  //
   const [showStartModal, setShowStartModal] = useState(false);
   const [trackingStarted, setTrackingStarted] = useState(false);
   const [resetCounter, setResetCounter] = useState(0);
@@ -64,24 +64,20 @@ function Breaths() {
     listeners: 0,
     streaming: false,
   }));
-  const [showShareModal, setShowShareModal] = useState(false);
-  const [shareCode, setShareCode] = useState("");
 
+  const [showShareModal, setShowShareModal] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
 
-  // Device capability
   const [hasSensor, setHasSensor] = useState(true);
 
-  // Refs
+  // Socket + buffers
   const socketRef = useRef(null);
   const sampleBufferRef = useRef([]);
 
-  //
   // ─────────────────────────────────────────────
-  //  SOCKET INITIALIZATION
+  // SOCKET INITIALIZER
   // ─────────────────────────────────────────────
-  //
   const ensureSocket = () => {
     if (socketRef.current) return socketRef.current;
 
@@ -89,27 +85,18 @@ function Breaths() {
       const s = io(API_BASE, { withCredentials: true });
       socketRef.current = s;
 
-      // Basic logging
-      s.on("connect", () =>
-        console.debug("socket connected", s.id)
-      );
-      s.on("disconnect", () =>
-        console.debug("socket disconnected")
-      );
+      s.on("connect", () => console.debug("socket connected"));
+      s.on("disconnect", () => console.debug("socket disconnected"));
       s.on("connect_error", (e) =>
         console.debug("socket connect error", e)
       );
 
-      //
-      // SESSION EVENTS
-      //
+      // SESSION CREATED
       s.on("session_created", ({ code }) => {
         try {
           localStorage.setItem("sessionCode", code);
           localStorage.setItem("sessionRole", "producer");
-        } catch (e) {
-          console.warn("localStorage set failed", e);
-        }
+        } catch {}
 
         setSessionInfo({
           code,
@@ -117,7 +104,7 @@ function Breaths() {
           listeners: 0,
           streaming: false,
         });
-        setShareCode(code);
+
         setShowShareModal(true);
         notify(`Session created: ${code}`, "success");
 
@@ -131,13 +118,12 @@ function Breaths() {
         }
       });
 
+      // JOINED SESSION
       s.on("joined", ({ code }) => {
         try {
           localStorage.setItem("sessionCode", code);
           localStorage.setItem("sessionRole", "listener");
-        } catch (e) {
-          console.warn("localStorage set failed", e);
-        }
+        } catch {}
 
         setSessionInfo({
           code,
@@ -145,8 +131,9 @@ function Breaths() {
           listeners: 1,
           streaming: false,
         });
-        notify(`Joined session ${code}`, "success");
+
         setJoining(false);
+        notify(`Joined session ${code}`, "success");
       });
 
       s.on("join_error", (err) => {
@@ -168,22 +155,16 @@ function Breaths() {
         }));
       });
 
-      //
-      // STREAM DATA EVENTS
-      //
+      // RECEIVE STREAM DATA
       s.on("breath_data", (payload) => {
         window.dispatchEvent(
-          new CustomEvent("socket:breath_data", {
-            detail: payload,
-          })
+          new CustomEvent("socket:breath_data", { detail: payload })
         );
       });
 
       s.on("session_snapshot", (snap) => {
         window.dispatchEvent(
-          new CustomEvent("socket:session_snapshot", {
-            detail: snap,
-          })
+          new CustomEvent("socket:session_snapshot", { detail: snap })
         );
       });
 
@@ -191,9 +172,7 @@ function Breaths() {
         try {
           localStorage.removeItem("sessionCode");
           localStorage.removeItem("sessionRole");
-        } catch (e) {
-          console.warn("localStorage remove failed", e);
-        }
+        } catch {}
 
         setSessionInfo({
           code: null,
@@ -210,11 +189,9 @@ function Breaths() {
     }
   };
 
-  //
   // ─────────────────────────────────────────────
-  //  EMIT BREATH DATA
+  // EMIT BREATH DATA
   // ─────────────────────────────────────────────
-  //
   const emitToSocket = (payload) => {
     const s = socketRef.current || ensureSocket();
     if (!s || s.disconnected) return;
@@ -226,7 +203,6 @@ function Breaths() {
         : null);
 
     if (!code) {
-      // buffer samples until a code exists
       const arr = Array.isArray(payload)
         ? payload.slice()
         : [payload];
@@ -236,17 +212,43 @@ function Breaths() {
       return;
     }
 
-    s.emit("breath_data", {
+    const enriched = {
       code,
-      samples: Array.isArray(payload) ? payload : [payload],
-    });
+      samples: [],
+      breathIn:
+        typeof payload.breathIn === "number"
+          ? payload.breathIn
+          : undefined,
+      breathOut:
+        typeof payload.breathOut === "number"
+          ? payload.breathOut
+          : undefined,
+      avgRespiratoryRate:
+        typeof payload.avgRespiratoryRate === "number"
+          ? payload.avgRespiratoryRate
+          : undefined,
+    };
+
+    const isSample = (s) =>
+      s &&
+      (typeof s.t === "number" ||
+        typeof s.x === "number" ||
+        typeof s.v === "number" ||
+        typeof s.y === "number" ||
+        typeof s.value === "number");
+
+    if (Array.isArray(payload)) {
+      enriched.samples = payload.filter(isSample).slice(-1000);
+    } else if (isSample(payload)) {
+      enriched.samples = [payload];
+    }
+
+    s.emit("breath_data", enriched);
   };
 
-  //
   // ─────────────────────────────────────────────
-  //  LOAD SAVED SESSIONS
+  // LOAD SAVED SESSIONS
   // ─────────────────────────────────────────────
-  //
   const loadSessions = useCallback(async () => {
     setLoadingSessions(true);
     try {
@@ -255,7 +257,7 @@ function Breaths() {
       });
       if (r?.data?.sessions) setSessions(r.data.sessions);
     } catch (err) {
-      console.debug("Failed to load sessions", err);
+      console.warn("Failed to load sessions", err);
     } finally {
       setLoadingSessions(false);
     }
@@ -265,11 +267,9 @@ function Breaths() {
     loadSessions();
   }, [loadSessions]);
 
-  //
   // ─────────────────────────────────────────────
-  //  DEVICE CAPABILITY CHECK
+  // DEVICE CAPABILITY CHECK
   // ─────────────────────────────────────────────
-  //
   useEffect(() => {
     try {
       const ua =
@@ -289,11 +289,9 @@ function Breaths() {
     }
   }, []);
 
-  //
   // ─────────────────────────────────────────────
-  //  SUMMARY COMPUTATION
+  // SUMMARY COMPUTE
   // ─────────────────────────────────────────────
-  //
   const computeSummary = (items) => {
     const now = new Date();
     const dayStart = new Date(
@@ -343,7 +341,8 @@ function Breaths() {
     if (!sessions.length) return null;
     if (savedSessionId)
       return (
-        sessions.find((s) => s._id === savedSessionId) || sessions[0]
+        sessions.find((s) => s._id === savedSessionId) ||
+        sessions[0]
       );
     return sessions[0];
   }, [sessions, savedSessionId]);
@@ -354,11 +353,9 @@ function Breaths() {
       sessionInfo.role === "listener" ||
       sessionInfo.streaming);
 
-  //
   // ─────────────────────────────────────────────
-  //  RENDER
+  // RENDER
   // ─────────────────────────────────────────────
-  //
   return (
     <div
       className="
@@ -378,52 +375,50 @@ function Breaths() {
 
       {/* SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {[
-          ["Today", summary.today],
-          ["Last 7 days", summary.week],
-          ["Last 30 days", summary.month],
-        ].map(([label, data]) => (
-          <div
-            key={label}
-            className="
-              bg-white dark:bg-[#1e293b]
-              border border-gray-200 dark:border-gray-700
-              rounded-xl p-4 shadow-sm
-            "
-          >
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {label}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {data.count} sessions
-              </span>
-            </div>
-
-            <div className="flex justify-between">
-              <div>
-                <div className="text-3xl font-bold dark:text-white">
-                  {data.count}
-                </div>
-                <div className="text-xs text-gray-500">
-                  sessions
-                </div>
+        {[["Today", summary.today], ["Last 7 days", summary.week], ["Last 30 days", summary.month]].map(
+          ([label, data]) => (
+            <div
+              key={label}
+              className="
+                bg-white dark:bg-[#1e293b]
+                border border-gray-200 dark:border-gray-700
+                rounded-xl p-4 shadow-sm
+              "
+            >
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {label}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {data.count} sessions
+                </span>
               </div>
 
-              <div className="text-right">
-                <div className="text-sm font-medium">
-                  Avg BPM
+              <div className="flex justify-between">
+                <div>
+                  <div className="text-3xl font-bold dark:text-white">
+                    {data.count}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    sessions
+                  </div>
                 </div>
-                <div className="text-xl font-semibold">
-                  {data.avgBpm}
-                </div>
-                <div className="text-xs text-gray-500">
-                  Avg dur {data.avgDur}s
+
+                <div className="text-right">
+                  <div className="text-sm font-medium">
+                    Avg BPM
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {data.avgBpm}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Avg dur {data.avgDur}s
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        )}
       </div>
 
       {/* LIVE GRAPH */}
@@ -490,18 +485,14 @@ function Breaths() {
               <button
                 className="btn btn-primary w-full mb-3"
                 onClick={() => {
-                  if (trackingStarted)
-                    setTrackingStarted(false);
-                  else if (everStarted)
-                    setTrackingStarted(true);
+                  if (trackingStarted) setTrackingStarted(false);
+                  else if (everStarted) setTrackingStarted(true);
                   else setShowStartModal(true);
 
                   setSavedSessionId(null);
                 }}
               >
-                {trackingStarted
-                  ? "Pause Tracking"
-                  : "Start Tracking"}
+                {trackingStarted ? "Pause Tracking" : "Start Tracking"}
               </button>
 
               {trackingStarted && (
@@ -526,9 +517,7 @@ function Breaths() {
                       setTrackingStarted(false);
                     }}
                   >
-                    {savingSession
-                      ? "Saving..."
-                      : "Stop & Save"}
+                    {savingSession ? "Saving..." : "Stop & Save"}
                   </button>
                 </div>
               )}
@@ -548,7 +537,7 @@ function Breaths() {
               />
             </>
           ) : (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-gray-300">
               No motion sensor detected. This device can only{" "}
               <b>join</b> sessions.
             </p>
@@ -611,8 +600,7 @@ function Breaths() {
                 Role: {sessionInfo.role}
               </div>
               <div className="text-xs text-gray-500">
-                {sessionInfo.listeners} device(s)
-                connected
+                {sessionInfo.listeners} device(s) connected
               </div>
             </div>
           ) : (

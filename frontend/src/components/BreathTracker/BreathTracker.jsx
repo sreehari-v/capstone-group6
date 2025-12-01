@@ -9,40 +9,49 @@ export default function BreathTracker({
   shouldSave = false,
   onSaved = () => {},
   sensitivity = 3,
-  onSample = null,
+  onSample = null,               // real-time live sharing
 }) {
+  //
   // ─────────────────────────────────────────────
   // STATE
   // ─────────────────────────────────────────────
+  //
   const [status, setStatus] = useState("Idle — press Start");
   const [breathIn, setBreathIn] = useState(0);
   const [breathOut, setBreathOut] = useState(0);
-  const [points, setPoints] = useState([]);
+  const breathInRef = useRef(0);
+  const breathOutRef = useRef(0);
+
   const [bpm, setBpm] = useState(0);
+  const bpmRef = useRef(0);
+
+  const [points, setPoints] = useState([]);
+  const pointsRef = useRef([]);
 
   const startedAtRef = useRef(null);
+
   const gravityRef = useRef(0);
   const lastFiltered = useRef(0);
-  const lastDir = useRef(0);
 
   const inhaleTimesRef = useRef([]);
   const exhaleTimesRef = useRef([]);
   const cycleTimesRef = useRef([]);
 
-  const pointsRef = useRef([]);
-  const bpmRef = useRef(0);
+  const listenerRef = useRef(null);
   const bpmTimerRef = useRef(null);
 
-  const listenerRef = useRef(null);
-
+  //
   // ─────────────────────────────────────────────
-  // START / STOP MOTION TRACKING
+  // EFFECT: Start/Stop Motion Tracking
   // ─────────────────────────────────────────────
+  //
   useEffect(() => {
     if (active) {
       setStatus("Requesting motion access…");
 
-      // BPM smoothing timer
+      //
+      // BPM smoothing timer (running every second)
+      //
       if (bpmTimerRef.current) clearInterval(bpmTimerRef.current);
       bpmTimerRef.current = setInterval(() => {
         const now = Date.now();
@@ -59,13 +68,16 @@ export default function BreathTracker({
         const first = recent[0];
         const last = recent[recent.length - 1];
         const meanMs = (last - first) / (recent.length - 1);
-        const instant = 60000 / meanMs;
 
+        const instant = 60000 / meanMs;
         bpmRef.current = 0.25 * instant + 0.75 * bpmRef.current;
+
         setBpm(Math.round(bpmRef.current));
       }, 1000);
 
-      // FILTER PARAMETERS
+      //
+      // Motion parameters
+      //
       const gravityAlpha = 0.98;
       const motionAlpha = 0.4;
       const emaAlpha = 0.05;
@@ -75,15 +87,18 @@ export default function BreathTracker({
       let lastPointTime = 0;
       let lastDetectTime = 0;
 
+      //
+      // Motion Handler
+      //
       const handler = (ev) => {
         const t = Date.now();
-        const acc = ev.accelerationIncludingGravity || ev.acceleration;
+        const acc =
+          ev.accelerationIncludingGravity || ev.acceleration;
         if (!acc) return;
 
-        // Use best axis available
         const raw = acc.y ?? acc.x ?? acc.z ?? 0;
 
-        // Remove gravity bias
+        // Gravity removal
         gravityRef.current =
           gravityAlpha * gravityRef.current + (1 - gravityAlpha) * raw;
 
@@ -93,12 +108,12 @@ export default function BreathTracker({
         const filtered =
           motionAlpha * lastFiltered.current +
           (1 - motionAlpha) * motion;
-
         lastFiltered.current = filtered;
 
-        // Adaptive variance
+        // Adaptive noise estimation
         emaMean = emaAlpha * filtered + (1 - emaAlpha) * emaMean;
-        emaSq = emaAlpha * (filtered * filtered) + (1 - emaAlpha) * emaSq;
+        emaSq =
+          emaAlpha * filtered * filtered + (1 - emaAlpha) * emaSq;
 
         const variance = Math.max(0, emaSq - emaMean * emaMean);
         const std = Math.sqrt(variance);
@@ -108,26 +123,32 @@ export default function BreathTracker({
         const multiplier = 1.8 - (s - 1) * 0.3;
         const threshold = Math.max(0.002, std * multiplier);
 
-        // FIRST REAL MOTION → start
+        //
+        // FIRST MOTION → start session
+        //
         if (!startedAtRef.current && Math.abs(filtered) > threshold) {
           startedAtRef.current = new Date();
           setStatus("Tracking…");
         }
 
-        // GRAPH SAMPLE every ~120ms
+        //
+        // GRAPH SAMPLE (120ms interval)
+        //
         if (!lastPointTime || t - lastPointTime > 120) {
           const p = { x: t, y: Number(filtered.toFixed(4)) };
+
+          // Keep 400 most recent samples
           pointsRef.current = pointsRef.current.concat(p).slice(-400);
           setPoints(pointsRef.current.slice());
 
-          // SEND TO LIVE SHARING
+          // --- Live Sharing Emit ---
           if (typeof onSample === "function") {
             onSample({
               t: p.x,
               v: p.y,
               value: p.y,
-              breathIn,
-              breathOut,
+              breathIn: breathInRef.current,
+              breathOut: breathOutRef.current,
               avgRespiratoryRate: Math.round(bpmRef.current),
             });
           }
@@ -135,30 +156,36 @@ export default function BreathTracker({
           lastPointTime = t;
         }
 
-        // INHALE / EXHALE DETECTION
+        //
+        // Detect inhale/exhale events
+        //
         const minGap = 300;
 
         if (
           filtered > threshold &&
-          lastDir.current !== 1 &&
-          t - lastDetectTime > minGap
+          t - lastDetectTime > minGap &&
+          lastFiltered.current >= 0
         ) {
           inhaleTimesRef.current.push(t);
-          setBreathIn((v) => v + 1);
-          lastDir.current = 1;
-          lastDetectTime = t;
-        } else if (
-          filtered < -threshold &&
-          lastDir.current !== -1 &&
-          t - lastDetectTime > minGap
-        ) {
-          exhaleTimesRef.current.push(t);
-          setBreathOut((v) => v + 1);
-          lastDir.current = -1;
+          breathInRef.current += 1;
+          setBreathIn(breathInRef.current);
           lastDetectTime = t;
         }
 
+        if (
+          filtered < -threshold &&
+          t - lastDetectTime > minGap &&
+          lastFiltered.current <= 0
+        ) {
+          exhaleTimesRef.current.push(t);
+          breathOutRef.current += 1;
+          setBreathOut(breathOutRef.current);
+          lastDetectTime = t;
+        }
+
+        //
         // Cycle pairing
+        //
         while (
           cycleTimesRef.current.length <
           Math.min(
@@ -167,17 +194,20 @@ export default function BreathTracker({
           )
         ) {
           const idx = cycleTimesRef.current.length;
-          const cycle = Math.max(
-            inhaleTimesRef.current[idx],
-            exhaleTimesRef.current[idx]
+          cycleTimesRef.current.push(
+            Math.max(
+              inhaleTimesRef.current[idx],
+              exhaleTimesRef.current[idx]
+            )
           );
-          cycleTimesRef.current.push(cycle);
           if (cycleTimesRef.current.length > 200)
             cycleTimesRef.current.shift();
         }
       };
 
-      // iOS permission flow
+      //
+      // iOS permission
+      //
       try {
         if (
           typeof DeviceMotionEvent !== "undefined" &&
@@ -187,11 +217,13 @@ export default function BreathTracker({
             .then((resp) => {
               if (resp === "granted") {
                 window.addEventListener("devicemotion", handler, true);
-              } else setStatus("Motion permission denied");
+              } else {
+                setStatus("Motion permission denied");
+              }
             })
-            .catch(() => {
-              window.addEventListener("devicemotion", handler, true);
-            });
+            .catch(() =>
+              window.addEventListener("devicemotion", handler, true)
+            );
         } else {
           window.addEventListener("devicemotion", handler, true);
         }
@@ -202,13 +234,19 @@ export default function BreathTracker({
       listenerRef.current = handler;
     }
 
+    //
     // ─────────────────────────────────────────────
     // STOP TRACKING
     // ─────────────────────────────────────────────
+    //
     else {
       try {
         if (listenerRef.current)
-          window.removeEventListener("devicemotion", listenerRef.current, true);
+          window.removeEventListener(
+            "devicemotion",
+            listenerRef.current,
+            true
+          );
         listenerRef.current = null;
       } catch {}
 
@@ -219,23 +257,31 @@ export default function BreathTracker({
       } catch {}
 
       try {
-        if (onStop) onStop();
+        if (typeof onStop === "function") onStop();
       } catch {}
 
-      // Save session
+      //
+      // Save session if requested
+      //
       if (shouldSave && startedAtRef.current) {
         const endedAt = new Date();
         const started = startedAtRef.current;
-        const durationSeconds = +((endedAt - started) / 1000).toFixed(3);
+
+        const durationSeconds = +(
+          (endedAt - started) /
+          1000
+        ).toFixed(3);
 
         const session = {
           startedAt: started.toISOString(),
           endedAt: endedAt.toISOString(),
           durationSeconds,
           avgRespiratoryRate: bpm,
-          breathIn,
-          breathOut,
-          totalBreaths: Math.floor((breathIn + breathOut) / 2),
+          breathIn: breathInRef.current,
+          breathOut: breathOutRef.current,
+          totalBreaths: Math.floor(
+            (breathInRef.current + breathOutRef.current) / 2
+          ),
           samples: pointsRef.current.map((p) => ({
             t: p.x,
             v: p.y,
@@ -257,67 +303,139 @@ export default function BreathTracker({
       startedAtRef.current = null;
     }
 
+    //
+    // CLEANUP
+    //
     return () => {
       try {
         if (listenerRef.current)
-          window.removeEventListener("devicemotion", listenerRef.current, true);
-        listenerRef.current = null;
+          window.removeEventListener(
+            "devicemotion",
+            listenerRef.current,
+            true
+          );
       } catch {}
+
       try {
         if (bpmTimerRef.current)
           clearInterval(bpmTimerRef.current);
-        bpmTimerRef.current = null;
       } catch {}
     };
   }, [active, sensitivity, shouldSave]);
 
+  //
   // ─────────────────────────────────────────────
   // RESET HANDLER
   // ─────────────────────────────────────────────
+  //
   useEffect(() => {
     setBreathIn(0);
     setBreathOut(0);
+    breathInRef.current = 0;
+    breathOutRef.current = 0;
+
     setPoints([]);
-    setBpm(0);
+    pointsRef.current = [];
 
     inhaleTimesRef.current = [];
     exhaleTimesRef.current = [];
     cycleTimesRef.current = [];
-    pointsRef.current = [];
+
+    setBpm(0);
+    bpmRef.current = 0;
+
     startedAtRef.current = null;
   }, [resetSignal]);
 
+  //
   // ─────────────────────────────────────────────
-  // CHART OPTIONS
+  // LISTENER MODE — RECEIVE SOCKET DATA
   // ─────────────────────────────────────────────
+  //
+  useEffect(() => {
+    const handler = (ev) => {
+      const payload = ev?.detail;
+      if (!payload) return;
+
+      //
+      // Waveform samples
+      //
+      const samples = Array.isArray(payload.samples)
+        ? payload.samples
+        : payload.t
+        ? [payload]
+        : [];
+
+      if (samples.length) {
+        const mapped = samples.map((s) => ({
+          x: s.t || s.x,
+          y: Number(s.v ?? s.y ?? s.value ?? 0),
+        }));
+
+        pointsRef.current = pointsRef.current.concat(mapped).slice(-400);
+        setPoints(pointsRef.current.slice());
+      }
+
+      //
+      // Summary fields
+      //
+      if (typeof payload.breathIn === "number") {
+        breathInRef.current = payload.breathIn;
+        setBreathIn(payload.breathIn);
+      }
+
+      if (typeof payload.breathOut === "number") {
+        breathOutRef.current = payload.breathOut;
+        setBreathOut(payload.breathOut);
+      }
+
+      if (typeof payload.avgRespiratoryRate === "number") {
+        const incoming = payload.avgRespiratoryRate;
+        bpmRef.current =
+          0.4 * incoming + 0.6 * bpmRef.current;
+        setBpm(Math.round(bpmRef.current));
+      }
+    };
+
+    window.addEventListener("socket:breath_data", handler);
+    window.addEventListener("socket:session_snapshot", handler);
+
+    return () => {
+      window.removeEventListener("socket:breath_data", handler);
+      window.removeEventListener("socket:session_snapshot", handler);
+    };
+  }, []);
+
+  //
+  // ─────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────
+  //
+  const total = Math.floor(
+    (breathInRef.current + breathOutRef.current) / 2
+  );
+
   const chartOptions = {
     chart: {
       id: "breath-chart",
       animations: { enabled: false },
       toolbar: { show: false },
-      background: "transparent",
+      zoom: { enabled: false },
+      sparkline: { enabled: false },
     },
     xaxis: { type: "datetime" },
     stroke: { curve: "smooth", width: 3, colors: ["#1193d4"] },
     tooltip: { enabled: true },
-    grid: {
-      borderColor: "#475569",
-      strokeDashArray: 3,
-    },
+    grid: { borderColor: "#475569", strokeDashArray: 3 },
+    legend: { show: false },
   };
 
-  const total = Math.floor((breathIn + breathOut) / 2);
-
-  // ─────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────
   return (
     <div className="w-full">
       <div className="mb-2 text-sm text-gray-600 dark:text-slate-300">
         {status}
       </div>
 
-      {/* STATS */}
       <div className="grid grid-cols-4 gap-2 text-center">
         <Box label="Breath In" value={breathIn} />
         <Box label="Breath Out" value={breathOut} />
@@ -325,7 +443,6 @@ export default function BreathTracker({
         <Box label="Breathing Rate" value={`${bpm} BPM`} highlight />
       </div>
 
-      {/* GRAPH */}
       <div className="mt-4">
         <Chart
           options={chartOptions}
@@ -345,14 +462,7 @@ export default function BreathTracker({
 
 function Box({ label, value, highlight = false }) {
   return (
-    <div
-      className="
-        p-3 rounded 
-        bg-white dark:bg-[#1e293b]
-        border border-slate-200 dark:border-slate-700
-        text-[#0d171b] dark:text-white
-      "
-    >
+    <div className="p-3 rounded bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700">
       <div className="text-sm text-gray-600 dark:text-gray-300">
         {label}
       </div>
