@@ -20,6 +20,8 @@ export default function BreathTracker({
   const [breathIn, setBreathIn] = useState(0);
   const [breathOut, setBreathOut] = useState(0);
   const [points, setPoints] = useState([]);
+  const breathInRef = useRef(0);
+  const breathOutRef = useRef(0);
   const [bpm, setBpm] = useState(0);
   const [startedAt, setStartedAt] = useState(null);
   const startedAtRef = useRef(null);
@@ -109,11 +111,9 @@ export default function BreathTracker({
           setPoints(pointsRef.current.slice());
           try {
             if (typeof onSample === 'function') {
-              // log sample emission for debugging
-              try { console.debug('BreathTracker onSample ->', { t: p.x, v: p.y }); } catch (e) { console.warn('log failed', e); }
               // include current aggregate counts and estimated BPM so listeners can show same stats
               try {
-                const samplePayload = { t: p.x, v: p.y, value: p.y, breathIn: breathIn || 0, breathOut: breathOut || 0, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 };
+                const samplePayload = { t: p.x, v: p.y, value: p.y, breathIn: breathInRef.current || 0, breathOut: breathOutRef.current || 0, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 };
                 onSample(samplePayload);
               } catch {
                 // fallback to minimal sample
@@ -127,12 +127,18 @@ export default function BreathTracker({
         const minInterval = 300;
         if (filtered > threshold && lastDir.current !== 1 && t - lastCountTime > minInterval) {
           inhaleTimesRef.current.push(t);
-          setBreathIn((v) => v + 1);
+          // update synchronous refs first so emitted samples include the new counts
+          breathInRef.current = (breathInRef.current || 0) + 1;
+          try { setBreathIn((v) => v + 1); } catch (e) { console.warn('setBreathIn failed', e); }
+          // emit an immediate summary update so listeners can update counts without waiting for next sample
+          // summary emit removed (debug) — listeners will receive counts via normal sample payloads
           lastDir.current = 1;
           lastCountTime = t;
         } else if (filtered < -threshold && lastDir.current !== -1 && t - lastCountTime > minInterval) {
           exhaleTimesRef.current.push(t);
-          setBreathOut((v) => v + 1);
+          breathOutRef.current = (breathOutRef.current || 0) + 1;
+          try { setBreathOut((v) => v + 1); } catch (e) { console.warn('setBreathOut failed', e); }
+          // summary emit removed (debug) — listeners will receive counts via normal sample payloads
           lastDir.current = -1;
           lastCountTime = t;
         }
@@ -201,7 +207,7 @@ export default function BreathTracker({
       try {
         if (typeof onStop === "function") onStop();
       } catch (err) {
-        console.debug("BreathTracker onStop callback error", err);
+        console.warn("BreathTracker onStop callback error", err);
       }
 
   const endedAt = new Date();
@@ -254,6 +260,8 @@ export default function BreathTracker({
   useEffect(() => {
     setBreathIn(0);
     setBreathOut(0);
+  breathInRef.current = 0;
+  breathOutRef.current = 0;
     setPoints([]);
     setBpm(0);
     setStartedAt(null);
@@ -275,9 +283,21 @@ export default function BreathTracker({
           /* ignore malformed samples */
         }
       }
-      if (typeof payload.breathIn === 'number') setBreathIn(payload.breathIn);
-      if (typeof payload.breathOut === 'number') setBreathOut(payload.breathOut);
-      if (typeof payload.avgRespiratoryRate === 'number') setBpm(Math.round(payload.avgRespiratoryRate));
+      if (typeof payload.breathIn === 'number') {
+        breathInRef.current = payload.breathIn;
+        setBreathIn(payload.breathIn);
+      }
+      if (typeof payload.breathOut === 'number') {
+        breathOutRef.current = payload.breathOut;
+        setBreathOut(payload.breathOut);
+      }
+      if (typeof payload.avgRespiratoryRate === 'number') {
+        // smooth incoming BPM updates to reduce jitter on listeners
+        const alpha = 0.4;
+        const incoming = payload.avgRespiratoryRate || 0;
+        bpmRef.current = alpha * incoming + (1 - alpha) * (bpmRef.current || incoming);
+        setBpm(Math.round(bpmRef.current));
+      }
     };
     try { window.addEventListener('socket:breath_data', handler); } catch { /* ignore */ }
     try { window.addEventListener('socket:session_snapshot', handler); } catch { /* ignore */ }
@@ -292,6 +312,7 @@ export default function BreathTracker({
   const chartOptions = {
     chart: { id: "breath-chart", animations: { enabled: false }, toolbar: { show: false }, zoom: { enabled: false }, sparkline: { enabled: false } },
     xaxis: { type: "datetime" },
+    dataLabels: { enabled: false },
     stroke: { curve: "smooth", width: 3, colors: ["#1193d4"] },
     tooltip: { enabled: true, x: { format: "HH:mm:ss" } },
     legend: { show: false },
