@@ -111,7 +111,14 @@ export default function BreathTracker({
             if (typeof onSample === 'function') {
               // log sample emission for debugging
               try { console.debug('BreathTracker onSample ->', { t: p.x, v: p.y }); } catch (e) { console.warn('log failed', e); }
-              onSample({ t: p.x, v: p.y, value: p.y });
+              // include current aggregate counts and estimated BPM so listeners can show same stats
+              try {
+                const samplePayload = { t: p.x, v: p.y, value: p.y, breathIn: breathIn || 0, breathOut: breathOut || 0, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 };
+                onSample(samplePayload);
+              } catch {
+                // fallback to minimal sample
+                try { onSample({ t: p.x, v: p.y, value: p.y }); } catch (err) { console.warn('onSample fallback failed', err); }
+              }
             }
           } catch (err) { console.warn('onSample callback failed', err); }
           lastEventTime = t;
