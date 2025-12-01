@@ -30,6 +30,9 @@ export default function BreathTracker({
   const gravityRef = useRef(0);
   const lastFiltered = useRef(0);
   const lastDir = useRef(0);
+  // extra smoothing for sensor samples to reduce high-frequency noise
+  const smoothedRef = useRef(0);
+  const sensorSmoothAlpha = 0.7; // larger -> smoother (0..1)
   const inhaleTimesRef = useRef([]);
   const exhaleTimesRef = useRef([]);
   const cycleTimesRef = useRef([]);
@@ -126,9 +129,12 @@ export default function BreathTracker({
           setStatus("Tracking — collecting motion data");
         }
 
-    // append point at most every 120ms
+        // append point at most every 120ms
         if (!lastEventTime || t - lastEventTime > 120) {
-          const p = { x: t, y: Number(filtered.toFixed(4)) };
+          // additional smoothing (feathering) to reduce sensor noise before plotting
+          const smoothed = sensorSmoothAlpha * (smoothedRef.current || 0) + (1 - sensorSmoothAlpha) * filtered;
+          smoothedRef.current = smoothed;
+          const p = { x: t, y: Number(smoothed.toFixed(4)) };
           pointsRef.current = pointsRef.current.concat(p).slice(-400);
           setPoints(pointsRef.current.slice());
           try {
