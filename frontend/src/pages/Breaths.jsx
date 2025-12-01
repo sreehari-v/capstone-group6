@@ -13,6 +13,7 @@ function Breaths() {
   const [sensitivity, setSensitivity] = useState(3);
   const { showToast } = useContext(ToastContext);
   const [savingSession, setSavingSession] = useState(false);
+  const [saveRequested, setSaveRequested] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [savedSessionId, setSavedSessionId] = useState(null);
   const [loadingSessions, setLoadingSessions] = useState(false);
@@ -168,10 +169,12 @@ function Breaths() {
                   active={trackingStarted}
                   resetSignal={resetCounter}
                   sensitivity={sensitivity}
+                  shouldSave={saveRequested}
+                  onSaved={() => setSaveRequested(false)}
                   onStop={() => setTrackingStarted(false)}
                   onError={(err) => { setSensorError(err); setTrackingStarted(false); }}
                   onSave={async (session) => {
-                    // Called by BreathTracker when the session stops
+                    // Called by BreathTracker only when parent requested a save
                     console.debug('Breaths.onSave received session', session);
                     try {
                       setSavingSession(true);
@@ -210,7 +213,7 @@ function Breaths() {
                 {trackingStarted && (
                   <div className="flex gap-2">
                     <button onClick={() => { console.debug('Breaths: Reset clicked'); setResetCounter((c) => c + 1); setEverStarted(false); setTrackingStarted(false); setSavedSessionId(null); }} className="btn btn-outline flex-1">Reset</button>
-                    <button onClick={() => { console.debug('Breaths: Stop & Save clicked -> setting trackingStarted=false'); setTrackingStarted(false); }} className="btn btn-primary flex-1" disabled={savingSession}>{savingSession ? 'Saving...' : 'Stop & Save'}</button>
+                    <button onClick={() => { console.debug('Breaths: Stop & Save clicked -> request save and stop'); setSaveRequested(true); setTrackingStarted(false); }} className="btn btn-primary flex-1" disabled={savingSession}>{savingSession ? 'Saving...' : 'Stop & Save'}</button>
                   </div>
                 )}
 
@@ -228,9 +231,12 @@ function Breaths() {
                       <div className="text-xs text-gray-500">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
                     </div>
                   ) : null}
-                  <button className="btn btn-primary w-full" onClick={() => {
+                  <button className="min-w-[160px] w-full cursor-pointer overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm" onClick={() => {
                     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
                     setShareCode(code);
+                    // Persist code and notify other components so Active Session updates
+                    try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                    window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
                     setShowShareModal(true);
                   }}>Link device</button>
                   <div className="text-xs text-gray-500 mt-2">Share a code to let another device join your live session.</div>
@@ -280,6 +286,9 @@ function Breaths() {
                           // In a real implementation we'd call the backend to join; here we simulate success
                           await new Promise((r) => setTimeout(r, 700));
                           notify(`Joined session ${code}`, 'success');
+                          // mark joined locally and inform listeners
+                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
                           setShowShareModal(false);
                           setJoinCode('');
                         } catch {
