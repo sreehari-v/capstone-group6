@@ -312,6 +312,7 @@ export default function BreathTracker({
   const chartOptions = {
     chart: { id: "breath-chart", animations: { enabled: false }, toolbar: { show: false }, zoom: { enabled: false }, sparkline: { enabled: false } },
     xaxis: { type: "datetime" },
+    dataLabels: { enabled: false },
     stroke: { curve: "smooth", width: 3, colors: ["#1193d4"] },
     tooltip: { enabled: true, x: { format: "HH:mm:ss" } },
     legend: { show: false },
