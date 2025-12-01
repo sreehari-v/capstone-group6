@@ -12,6 +12,8 @@ import { Server as IOServer } from "socket.io";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
+import stepRoutes from "./routes/stepRoutes.js";
+import breathRoutes from "./routes/breathRoutes.js";
 
 dotenv.config();
 
@@ -67,6 +69,8 @@ app.use((req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/donations", donationRoutes);
+app.use("/api/steps", stepRoutes);
+app.use("/api/breaths", breathRoutes);
 
 // Start reminder scheduler
 import "./scheduler/medicineReminder.js";
@@ -207,9 +211,21 @@ io.on("connection", (socket) => {
     try {
       const { code } = payload || {};
       if (!code) return; // no session code provided
+      // Log incoming payload summary for debugging (do not log full samples in prod)
+      try {
+        const sampleCount = Array.isArray(payload.samples) ? payload.samples.length : (payload.samples ? 'unknown' : 0);
+        console.debug('ws: breath_data received', { code, sampleCount, hasSummary: typeof payload.breathIn === 'number' || typeof payload.avgRespiratoryRate === 'number' });
+        if (sampleCount && sampleCount > 0 && Array.isArray(payload.samples)) {
+          // show a small preview of the first few samples to validate shape
+          const preview = payload.samples.slice(0, 3).map(s => ({ t: s.t || s.x, v: s.v ?? s.y ?? s.value }));
+          console.debug('ws: breath_data preview', preview);
+        }
+      } catch (logErr) { console.warn('ws: breath_data log failed', logErr); }
       const s = sessions.get(code);
       if (!s) return;
       // forward to listeners
+      const listenerCount = s.listeners ? s.listeners.size : 0;
+      try { console.debug('ws: forwarding breath_data', { code, listenerCount }); } catch {}
       for (const lid of s.listeners) {
         io.to(lid).emit("breath_data", payload);
       }

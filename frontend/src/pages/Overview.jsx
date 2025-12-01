@@ -1,17 +1,35 @@
+// ⭐ FINAL MERGED FILE — NO MERGE CONFLICTS
+
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.REACT_APP_API_BASE ||
+  "http://localhost:5000";
+
 const Overview = () => {
   const [medicines, setMedicines] = useState([]);
-  const [stepsToday] = useState(4200);
+
+  const [stepsToday] = useState(0);
+  const [weeklyTotal] = useState(0);
+  const [weeklyByDay] = useState([]);
+  const [loadingSteps] = useState(false);
+
   const goal = 10000;
 
   const [breathLast] = useState({ bpm: 16, min: 11, max: 22 });
 
+  const [sessionInfo, setSessionInfo] = useState(() => ({
+    code: typeof window !== "undefined" ? localStorage.getItem("sessionCode") : null,
+    listeners: 0,
+    role: null,
+  }));
+
   const navigate = useNavigate();
 
-  // Verify user JWT session
+  // Verify JWT
   useEffect(() => {
     const verifyUser = async () => {
       try {
@@ -36,6 +54,32 @@ const Overview = () => {
     fetchMeds();
   }, []);
 
+  // Listen for session updates
+  useEffect(() => {
+    const handler = (ev) => {
+      const d = ev?.detail || {};
+
+      if (d.code === null) {
+        setSessionInfo({ code: null, listeners: 0, role: null });
+        return;
+      }
+
+      setSessionInfo((prev) => ({
+        code: d.code || prev.code,
+        role: d.role || prev.role,
+        listeners:
+          typeof d.listenersCount === "number"
+            ? d.listenersCount
+            : d.role === "listener"
+            ? Math.max(1, prev.listeners)
+            : prev.listeners,
+      }));
+    };
+
+    window.addEventListener("session:updated", handler);
+    return () => window.removeEventListener("session:updated", handler);
+  }, []);
+
   const medsToday = useMemo(() => {
     return medicines
       .slice()
@@ -44,12 +88,28 @@ const Overview = () => {
   }, [medicines]);
 
   const stepsProgress = Math.round((stepsToday / goal) * 100);
-  const weekly = [4200, 5600, 7000, 8000, 9500, 4000, stepsToday];
+
+  const weeklyBars = useMemo(() => {
+    if (!weeklyByDay?.length) {
+      return Array.from({ length: 7 }, () => ({ date: null, steps: 0 }));
+    }
+    const arr = weeklyByDay.slice(-7);
+    if (arr.length < 7) {
+      const missing = Array.from({ length: 7 - arr.length }, () => ({
+        date: null,
+        steps: 0,
+      }));
+      return [...missing, ...arr];
+    }
+    return arr;
+  }, [weeklyByDay]);
 
   const medicinesSummary = useMemo(() => {
     const counts = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
     medicines.forEach((m) => {
-      if (m?.schedule && counts[m.schedule] !== undefined) counts[m.schedule]++;
+      if (m?.schedule && counts[m.schedule] !== undefined) {
+        counts[m.schedule]++;
+      }
     });
 
     return { counts, total: medicines.length };
@@ -60,6 +120,12 @@ const Overview = () => {
       0.4 * (medicinesSummary.total ? 100 : 0) +
       0.3 * 100
   );
+
+  const formatDayLabel = (isoDate, fallbackIndex) => {
+    if (!isoDate) return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][fallbackIndex];
+    const d = new Date(isoDate);
+    return d.toLocaleDateString(undefined, { weekday: "short" });
+  };
 
   return (
     <div
@@ -79,33 +145,21 @@ const Overview = () => {
         <div className="flex flex-wrap gap-3">
           <Link
             to="/dashboard/steps"
-            className="
-              px-4 py-2 rounded shadow text-sm
-              bg-slate-100 hover:bg-slate-200
-              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
-            "
+            className="px-4 py-2 rounded shadow text-sm bg-slate-100 hover:bg-slate-200 dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200"
           >
             Start Walk
           </Link>
 
           <Link
             to="/dashboard/breath"
-            className="
-              px-4 py-2 rounded shadow text-sm
-              bg-slate-100 hover:bg-slate-200
-              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
-            "
+            className="px-4 py-2 rounded shadow text-sm bg-slate-100 hover:bg-slate-200 dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200"
           >
             Start Breath Tracking
           </Link>
 
           <Link
             to="/dashboard/medication"
-            className="
-              px-4 py-2 rounded shadow text-sm
-              bg-slate-100 hover:bg-slate-200
-              dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200
-            "
+            className="px-4 py-2 rounded shadow text-sm bg-slate-100 hover:bg-slate-200 dark:bg-[#1e293b] dark:hover:bg-[#273549] dark:text-slate-200"
           >
             Add Medicine
           </Link>
@@ -116,8 +170,9 @@ const Overview = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {/* Steps */}
         <div className="p-4 bg-white rounded-xl shadow border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-          <div className="text-sm text-gray-500 dark:text-slate-400">
-            Steps Today
+          <div className="text-sm text-gray-500 dark:text-slate-400 flex justify-between">
+            <span>Steps Today</span>
+            {loadingSteps && <span className="text-[10px] text-gray-400">Loading…</span>}
           </div>
           <div className="text-3xl font-bold mt-1 dark:text-white">
             {stepsToday.toLocaleString()}
@@ -129,12 +184,8 @@ const Overview = () => {
 
         {/* Breathing */}
         <div className="p-4 bg-white rounded-xl shadow border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-          <div className="text-sm text-gray-500 dark:text-slate-400">
-            Breathing
-          </div>
-          <div className="text-3xl font-bold mt-1 dark:text-white">
-            {breathLast.bpm} BPM
-          </div>
+          <div className="text-sm text-gray-500 dark:text-slate-400">Breathing</div>
+          <div className="text-3xl font-bold mt-1 dark:text-white">{breathLast.bpm} BPM</div>
           <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
             {breathLast.bpm >= 12 && breathLast.bpm <= 20
               ? "Normal"
@@ -152,12 +203,8 @@ const Overview = () => {
 
         {/* Medicine Summary */}
         <div className="p-4 bg-white rounded-xl shadow border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-          <div className="text-sm text-gray-500 dark:text-slate-400">
-            Medicines Today
-          </div>
-          <div className="text-3xl font-bold mt-1 dark:text-white">
-            {medicinesSummary.total}
-          </div>
+          <div className="text-sm text-gray-500 dark:text-slate-400">Medicines Today</div>
+          <div className="text-3xl font-bold mt-1 dark:text-white">{medicinesSummary.total}</div>
           <div className="text-sm text-gray-600 dark:text-slate-300 mt-1">
             M ({medicinesSummary.counts.Morning}) • A (
             {medicinesSummary.counts.Afternoon}) • N (
@@ -167,26 +214,22 @@ const Overview = () => {
 
         {/* Active Session */}
         <div className="p-4 bg-white rounded-xl shadow border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-          <div className="text-sm text-gray-500 dark:text-slate-400">
-            Active Session
-          </div>
+          <div className="text-sm text-gray-500 dark:text-slate-400">Active Session</div>
           <div className="text-xl font-bold mt-1 dark:text-white">
-            Mobile connected
+            {sessionInfo.code ? "Session active" : "No active session"}
           </div>
           <div className="text-sm text-gray-600 dark:text-slate-300">
-            Viewer Code: {localStorage.getItem("sessionCode") || "—"}
+            Viewer Code: {sessionInfo.code || "—"}
           </div>
           <div className="text-sm text-gray-600 dark:text-slate-300">
-            1 device listening
+            {sessionInfo.listeners} device{sessionInfo.listeners === 1 ? "" : "s"} listening
           </div>
         </div>
       </div>
 
       {/* DAILY HEALTH SCORE */}
       <div className="bg-white rounded-xl shadow p-6 mb-6 border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-        <h3 className="font-semibold text-lg mb-4 dark:text-white">
-          Daily Health Score
-        </h3>
+        <h3 className="font-semibold text-lg mb-4 dark:text-white">Daily Health Score</h3>
 
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
@@ -197,36 +240,62 @@ const Overview = () => {
           </div>
 
           <div className="w-40 h-40 flex items-center justify-center rounded-full bg-gradient-to-tr from-sky-100 to-sky-200 dark:from-sky-700/40 dark:to-sky-500/40 shadow-md">
-            <div className="text-4xl font-extrabold dark:text-white">
-              {score}
-            </div>
+            <div className="text-4xl font-extrabold dark:text-white">{score}</div>
           </div>
         </div>
       </div>
 
-      {/* Weekly + Upcoming Section */}
+      {/* WEEKLY + UPCOMING */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Weekly Steps */}
         <div className="bg-white rounded-xl shadow p-4 md:col-span-2 border border-gray-200 dark:bg-[#1e293b] dark:border-gray-600">
-          <h3 className="font-semibold text-lg mb-3 dark:text-white">
-            Weekly Steps
-          </h3>
+          <h3 className="font-semibold text-lg mb-3 dark:text-white">Weekly Steps</h3>
 
-          <div className="flex items-end gap-3 h-36">
-            {weekly.map((val, i) => {
-              const h = Math.max(10, Math.round((val / goal) * 100));
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "12px",
+              height: "180px",
+              position: "relative",
+            }}
+          >
+            {weeklyBars.map((d, i) => {
+              const steps = Number(d.steps) || 0;
+              const maxSteps =
+                weeklyBars.reduce((max, v) => Math.max(max, Number(v.steps) || 0), 0) ||
+                1;
+
+              const ratio = steps / maxSteps;
+              const barHeight = 20 + ratio * 120;
+
+              const dayLabel = formatDayLabel(d.date, i);
+
               return (
-                <div key={i} className="flex-1 text-center">
+                <div key={i} style={{ flex: 1, textAlign: "center" }}>
                   <div
-                    className="w-6 mx-auto bg-sky-500 rounded-sm"
-                    style={{ height: `${h}%` }}
-                  ></div>
+                    style={{
+                      width: "14px",
+                      height: `${barHeight}px`,
+                      margin: "0 auto",
+                      borderRadius: "4px",
+                      backgroundColor: "#0ea5e9",
+                      cursor: "pointer",
+                    }}
+                  />
+
                   <div className="text-xs mt-1 text-gray-600 dark:text-slate-300">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
+                    {dayLabel}
                   </div>
+                  <div className="text-[10px] text-gray-500">{steps.toLocaleString()}</div>
                 </div>
               );
             })}
+          </div>
+
+          <div className="text-sm text-gray-600 mt-3">
+            Weekly total:{" "}
+            <span className="font-semibold">{weeklyTotal.toLocaleString()} steps</span>
           </div>
         </div>
 

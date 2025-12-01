@@ -1,227 +1,370 @@
 import React, { useEffect, useRef, useState } from "react";
 import Chart from "react-apexcharts";
-import { io as ioClient } from "socket.io-client";
 
 export default function BreathTracker({
   active = false,
-  onError,
+  onStop,
+  onSave,
   resetSignal = 0,
+  shouldSave = false,
+  onSaved = () => {},
   sensitivity = 3,
+  onSample = null,
 }) {
-  const [status, setStatus] = useState("Place phone on chest and press Start");
+  // ─────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────
+  const [status, setStatus] = useState("Idle — press Start");
   const [breathIn, setBreathIn] = useState(0);
   const [breathOut, setBreathOut] = useState(0);
   const [points, setPoints] = useState([]);
   const [bpm, setBpm] = useState(0);
 
-  const pointsRef = useRef([]);
-  const breathInRef = useRef(0);
-  const breathOutRef = useRef(0);
-  const bpmRef = useRef(0);
+  const startedAtRef = useRef(null);
+  const gravityRef = useRef(0);
+  const lastFiltered = useRef(0);
+  const lastDir = useRef(0);
 
-  const socketRef = useRef(null);
-  const incomingBufferRef = useRef([]);
-  const listenerRef = useRef(null);
-  const startupTimerRef = useRef(null);
-  const bpmTimerRef = useRef(null);
+  const inhaleTimesRef = useRef([]);
+  const exhaleTimesRef = useRef([]);
   const cycleTimesRef = useRef([]);
-  const pairedIndexRef = useRef(0);
-  const joinCode = "";
-  const total = Math.floor((breathIn + breathOut) / 2);
 
-  /* ------------------ DARK MODE FIX FOR TEXT ------------------ */
-  const statusColor =
-    "text-[#0d171b] dark:text-slate-300";
+  const pointsRef = useRef([]);
+  const bpmRef = useRef(0);
+  const bpmTimerRef = useRef(null);
 
-  /* ------------------ socket batching (kept original) ------------------ */
+  const listenerRef = useRef(null);
+
+  // ─────────────────────────────────────────────
+  // START / STOP MOTION TRACKING
+  // ─────────────────────────────────────────────
   useEffect(() => {
-    const interval = setInterval(() => {
-      const buf = incomingBufferRef.current;
-      if (!buf || buf.length === 0) return;
+    if (active) {
+      setStatus("Requesting motion access…");
 
-      const last = buf[buf.length - 1];
-      incomingBufferRef.current = [];
+      if (bpmTimerRef.current) clearInterval(bpmTimerRef.current);
+      bpmTimerRef.current = setInterval(() => {
+        try {
+          const now = Date.now();
+          const windowMs = 60_000;
+          const recent = cycleTimesRef.current.filter(
+            (t) => t >= now - windowMs
+          );
 
-      if (typeof last.breathIn === "number") setBreathIn(last.breathIn);
-      if (typeof last.breathOut === "number") setBreathOut(last.breathOut);
-      if (typeof last.bpm === "number") setBpm(Math.round(last.bpm));
+          if (recent.length < 2) {
+            bpmRef.current *= 0.9;
+            setBpm(Math.round(bpmRef.current));
+            return;
+          }
 
-      const newPoints = buf
-        .filter((p) => p.point)
-        .map((p) => ({ x: p.point.x || p.t, y: p.point.y || 0 }));
+          const first = recent[0];
+          const last = recent[recent.length - 1];
+          const intervals = recent.length - 1;
 
-      if (newPoints.length > 0) {
-        setPoints((ps) => {
-          const merged = ps.concat(newPoints);
-          return merged.length > 400
-            ? merged.slice(merged.length - 400)
-            : merged;
-        });
+          const meanMs = (last - first) / intervals;
+          const insta = 60000 / meanMs;
+
+          bpmRef.current = 0.25 * insta + 0.75 * bpmRef.current;
+          setBpm(Math.round(bpmRef.current));
+        } catch {}
+      }, 1000);
+
+      const gravityAlpha = 0.98;
+      const motionAlpha = 0.4;
+      const emaAlpha = 0.05;
+
+      let emaMean = 0;
+      let emaSq = 0;
+      let lastPointTime = 0;
+      let lastDetectTime = 0;
+
+      const handler = (ev) => {
+        const t = Date.now();
+        const acc = ev.accelerationIncludingGravity || ev.acceleration;
+        if (!acc) return;
+
+        const raw = acc.y ?? acc.x ?? acc.z ?? 0;
+
+        gravityRef.current =
+          gravityAlpha * gravityRef.current + (1 - gravityAlpha) * raw;
+
+        const motion = raw - gravityRef.current;
+
+        const filtered =
+          motionAlpha * lastFiltered.current +
+          (1 - motionAlpha) * motion;
+
+        lastFiltered.current = filtered;
+
+        // adaptive threshold
+        emaMean = emaAlpha * filtered + (1 - emaAlpha) * emaMean;
+        emaSq = emaAlpha * filtered * filtered + (1 - emaAlpha) * emaSq;
+
+        const variance = Math.max(0, emaSq - emaMean * emaMean);
+        const std = Math.sqrt(variance);
+
+        const s = Math.min(5, Math.max(1, sensitivity));
+        const multiplier = 1.8 - (s - 1) * 0.3; // sensitivity → multiplier mapping
+        const threshold = Math.max(0.002, std * multiplier);
+
+        // first valid motion marks session start
+        if (!startedAtRef.current && Math.abs(filtered) > threshold) {
+          const now = new Date();
+          startedAtRef.current = now;
+          setStatus("Tracking…");
+        }
+
+        // Sample graph point every ~120ms
+        if (!lastPointTime || t - lastPointTime > 120) {
+          const p = { x: t, y: Number(filtered.toFixed(4)) };
+          pointsRef.current = pointsRef.current
+            .concat(p)
+            .slice(-400);
+
+          setPoints(pointsRef.current.slice());
+
+          try {
+            if (typeof onSample === "function") {
+              onSample({ t: p.x, v: p.y, value: p.y });
+            }
+          } catch {}
+
+          lastPointTime = t;
+        }
+
+        // Detect inhale/exhale events
+        const minGap = 300;
+
+        if (
+          filtered > threshold &&
+          lastDir.current !== 1 &&
+          t - lastDetectTime > minGap
+        ) {
+          inhaleTimesRef.current.push(t);
+          setBreathIn((v) => v + 1);
+          lastDir.current = 1;
+          lastDetectTime = t;
+        } else if (
+          filtered < -threshold &&
+          lastDir.current !== -1 &&
+          t - lastDetectTime > minGap
+        ) {
+          exhaleTimesRef.current.push(t);
+          setBreathOut((v) => v + 1);
+          lastDir.current = -1;
+          lastDetectTime = t;
+        }
+
+        // Pair cycles
+        while (
+          cycleTimesRef.current.length <
+          Math.min(
+            inhaleTimesRef.current.length,
+            exhaleTimesRef.current.length
+          )
+        ) {
+          const idx = cycleTimesRef.current.length;
+          const iT = inhaleTimesRef.current[idx];
+          const eT = exhaleTimesRef.current[idx];
+          const cycleT = Math.max(iT, eT);
+
+          cycleTimesRef.current.push(cycleT);
+          if (cycleTimesRef.current.length > 200)
+            cycleTimesRef.current.shift();
+        }
+      };
+
+      // permission for iOS
+      try {
+        if (
+          typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function"
+        ) {
+          DeviceMotionEvent.requestPermission()
+            .then((resp) => {
+              if (resp === "granted") {
+                window.addEventListener("devicemotion", handler, true);
+              } else {
+                setStatus("Motion permission denied");
+              }
+            })
+            .catch(() => {
+              window.addEventListener("devicemotion", handler, true);
+            });
+        } else {
+          window.addEventListener("devicemotion", handler, true);
+        }
+      } catch {
+        setStatus("Motion not available");
       }
-    }, 120);
-    return () => clearInterval(interval);
-  }, []);
 
-  /* ----------- -------- DARK MODE CHART FIX ------------- ----------- */
+      listenerRef.current = handler;
+    } else {
+      // STOP TRACKING
+      try {
+        if (listenerRef.current) {
+          window.removeEventListener("devicemotion", listenerRef.current, true);
+          listenerRef.current = null;
+        }
+      } catch {}
 
+      try {
+        if (bpmTimerRef.current) {
+          clearInterval(bpmTimerRef.current);
+          bpmTimerRef.current = null;
+        }
+      } catch {}
+
+      // finalize session payload
+      try {
+        if (typeof onStop === "function") onStop();
+      } catch {}
+
+      if (shouldSave && startedAtRef.current) {
+        const endedAt = new Date();
+        const started = startedAtRef.current;
+        const durationMs = endedAt - started;
+
+        const session = {
+          startedAt: started.toISOString(),
+          endedAt: endedAt.toISOString(),
+          durationSeconds: +(durationMs / 1000).toFixed(3),
+          avgRespiratoryRate: bpm,
+          breathIn,
+          breathOut,
+          totalBreaths: Math.floor((breathIn + breathOut) / 2),
+          samples: pointsRef.current.map((p) => ({
+            t: p.x,
+            v: p.y,
+            value: p.y,
+          })),
+          cycleTimestamps: cycleTimesRef.current.slice(),
+        };
+
+        try {
+          onSave?.(session);
+        } catch {}
+
+        try {
+          onSaved();
+        } catch {}
+      }
+
+      setStatus("Stopped");
+      startedAtRef.current = null;
+    }
+
+    return () => {
+      try {
+        if (listenerRef.current) {
+          window.removeEventListener("devicemotion", listenerRef.current, true);
+          listenerRef.current = null;
+        }
+      } catch {}
+      try {
+        if (bpmTimerRef.current) {
+          clearInterval(bpmTimerRef.current);
+          bpmTimerRef.current = null;
+        }
+      } catch {}
+    };
+  }, [active, shouldSave, sensitivity]);
+
+  // ─────────────────────────────────────────────
+  // RESET HANDLER
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    setBreathIn(0);
+    setBreathOut(0);
+    setPoints([]);
+    setBpm(0);
+
+    inhaleTimesRef.current = [];
+    exhaleTimesRef.current = [];
+    cycleTimesRef.current = [];
+    pointsRef.current = [];
+  }, [resetSignal]);
+
+  // ─────────────────────────────────────────────
+  // CHART OPTIONS
+  // ─────────────────────────────────────────────
   const chartOptions = {
     chart: {
-      toolbar: { show: false },
+      id: "breath-chart",
       animations: { enabled: false },
+      toolbar: { show: false },
       background: "transparent",
     },
-    grid: {
-      borderColor: "#475569", // dark slate-600
-      strokeDashArray: 3,
-    },
-    xaxis: {
-      type: "datetime",
-      labels: {
-        style: {
-          colors: ["#0d171b", "#0d171b", "#0d171b"],
-        },
-      },
-      axisBorder: { show: false },
-      axisTicks: { show: false },
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: ["#0d171b"],
-        },
-      },
-    },
-    theme: {
-      mode: document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light",
-    },
+    xaxis: { type: "datetime" },
     stroke: {
       curve: "smooth",
       width: 3,
       colors: ["#1193d4"],
     },
-    tooltip: {
-      theme: document.documentElement.classList.contains("dark")
-        ? "dark"
-        : "light",
+    tooltip: { enabled: true },
+    grid: {
+      borderColor: "#475569",
+      strokeDashArray: 3,
     },
   };
 
-  /* ---------------------------- UI RENDER ---------------------------- */
+  const total = Math.floor((breathIn + breathOut) / 2);
 
+  // ─────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────
   return (
     <div className="w-full">
-      {/* ✔ Status text (Dark Mode safe) */}
-      <div className={`mb-2 text-sm ${statusColor}`}>
+      <div className="mb-2 text-sm text-gray-600 dark:text-slate-300">
         {status}
       </div>
 
-      {/* ✔ Control Row */}
-      <div className="flex items-center justify-center gap-2 mt-2">
-        <button className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm">
-          Share live
-        </button>
-
-        <input
-          placeholder="123456"
-          className="
-            w-28 text-center px-2 py-1 border rounded-md text-sm
-            bg-white dark:bg-[#1e293b]
-            text-[#0d171b] dark:text-white
-            border-slate-300 dark:border-slate-600
-          "
-        />
-
-        <button className="px-3 py-1 bg-slate-700 text-white rounded-md text-sm">
-          Join
-        </button>
+      {/* STATS */}
+      <div className="grid grid-cols-4 gap-2 text-center">
+        <Box label="Breath In" value={breathIn} />
+        <Box label="Breath Out" value={breathOut} />
+        <Box label="Total" value={total} />
+        <Box label="Breathing Rate" value={`${bpm} BPM`} highlight />
       </div>
 
-      {/* ✔ Stats Boxes */}
-      <div className="mt-4 grid grid-cols-4 gap-2 text-center">
-
-        {/* Breath In */}
-        <div
-          className="
-            p-3 rounded
-            bg-white dark:bg-[#1e293b]
-            text-[#0d171b] dark:text-white
-            border border-slate-200 dark:border-slate-700
-          "
-        >
-          <div className="text-sm text-gray-700 dark:text-slate-300">
-            Breath In
-          </div>
-          <div className="text-2xl font-bold">{breathIn}</div>
-        </div>
-
-        {/* Breath Out */}
-        <div
-          className="
-            p-3 rounded
-            bg-white dark:bg-[#1e293b]
-            text-[#0d171b] dark:text-white
-            border border-slate-200 dark:border-slate-700
-          "
-        >
-          <div className="text-sm text-gray-700 dark:text-slate-300">
-            Breath Out
-          </div>
-          <div className="text-2xl font-bold">{breathOut}</div>
-        </div>
-
-        {/* Total */}
-        <div
-          className="
-            p-3 rounded
-            bg-white dark:bg-[#1e293b]
-            text-[#0d171b] dark:text-white
-            border border-slate-200 dark:border-slate-700
-          "
-        >
-          <div className="text-sm text-gray-700 dark:text-slate-300">
-            Total
-          </div>
-          <div className="text-2xl font-bold">{total}</div>
-        </div>
-
-        {/* Breathing Rate */}
-        <div
-          className="
-            p-3 rounded
-            bg-white dark:bg-[#1e293b]
-            border border-slate-200 dark:border-slate-700
-          "
-        >
-          <div className="text-sm text-gray-700 dark:text-slate-300">
-            Breathing Rate
-          </div>
-          <div className="text-2xl font-bold text-[#1193d4] dark:text-blue-400">
-            {bpm} BPM
-          </div>
-        </div>
-      </div>
-
-      {/* ✔ Graph */}
+      {/* GRAPH */}
       <div className="mt-4">
-        {Chart ? (
-          <Chart
-            options={chartOptions}
-            series={[
-              {
-                name: "breath",
-                data: points.map((p) => ({ x: p.x, y: p.y })),
-              },
-            ]}
-            type="area"
-            height={240}
-          />
-        ) : (
-          <div className="p-3 border rounded text-sm dark:text-white">
-            ApexCharts not installed
-          </div>
-        )}
+        <Chart
+          options={chartOptions}
+          series={[
+            {
+              name: "breath",
+              data: points.map((p) => ({ x: p.x, y: p.y })),
+            },
+          ]}
+          type="area"
+          height={240}
+        />
+      </div>
+    </div>
+  );
+}
+
+// helper UI
+function Box({ label, value, highlight = false }) {
+  return (
+    <div
+      className="
+      p-3 rounded 
+      bg-white dark:bg-[#1e293b]
+      border border-slate-200 dark:border-slate-700
+      text-[#0d171b] dark:text-white
+    "
+    >
+      <div className="text-sm text-gray-600 dark:text-gray-300">
+        {label}
+      </div>
+      <div
+        className={`text-2xl font-bold ${
+          highlight ? "text-[#1193d4] dark:text-blue-400" : ""
+        }`}
+      >
+        {value}
       </div>
     </div>
   );
