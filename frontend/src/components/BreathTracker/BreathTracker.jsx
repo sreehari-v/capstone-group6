@@ -111,8 +111,6 @@ export default function BreathTracker({
           setPoints(pointsRef.current.slice());
           try {
             if (typeof onSample === 'function') {
-              // log sample emission for debugging
-              try { console.debug('BreathTracker onSample ->', { t: p.x, v: p.y }); } catch (e) { console.warn('log failed', e); }
               // include current aggregate counts and estimated BPM so listeners can show same stats
               try {
                 const samplePayload = { t: p.x, v: p.y, value: p.y, breathIn: breathInRef.current || 0, breathOut: breathOutRef.current || 0, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 };
@@ -133,18 +131,14 @@ export default function BreathTracker({
           breathInRef.current = (breathInRef.current || 0) + 1;
           try { setBreathIn((v) => v + 1); } catch (e) { console.warn('setBreathIn failed', e); }
           // emit an immediate summary update so listeners can update counts without waiting for next sample
-          try {
-            if (typeof onSample === 'function') onSample({ breathIn: breathInRef.current, breathOut: breathOutRef.current, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 });
-          } catch (err) { console.warn('onSample summary emit failed', err); }
+          // summary emit removed (debug) — listeners will receive counts via normal sample payloads
           lastDir.current = 1;
           lastCountTime = t;
         } else if (filtered < -threshold && lastDir.current !== -1 && t - lastCountTime > minInterval) {
           exhaleTimesRef.current.push(t);
           breathOutRef.current = (breathOutRef.current || 0) + 1;
           try { setBreathOut((v) => v + 1); } catch (e) { console.warn('setBreathOut failed', e); }
-          try {
-            if (typeof onSample === 'function') onSample({ breathIn: breathInRef.current, breathOut: breathOutRef.current, avgRespiratoryRate: Math.round(bpmRef.current || bpm) || 0 });
-          } catch (err) { console.warn('onSample summary emit failed', err); }
+          // summary emit removed (debug) — listeners will receive counts via normal sample payloads
           lastDir.current = -1;
           lastCountTime = t;
         }
@@ -213,7 +207,7 @@ export default function BreathTracker({
       try {
         if (typeof onStop === "function") onStop();
       } catch (err) {
-        console.debug("BreathTracker onStop callback error", err);
+        console.warn("BreathTracker onStop callback error", err);
       }
 
   const endedAt = new Date();
@@ -290,12 +284,10 @@ export default function BreathTracker({
         }
       }
       if (typeof payload.breathIn === 'number') {
-        console.debug('BreathTracker(listener) set breathIn ->', payload.breathIn);
         breathInRef.current = payload.breathIn;
         setBreathIn(payload.breathIn);
       }
       if (typeof payload.breathOut === 'number') {
-        console.debug('BreathTracker(listener) set breathOut ->', payload.breathOut);
         breathOutRef.current = payload.breathOut;
         setBreathOut(payload.breathOut);
       }

@@ -69,7 +69,6 @@ function Breaths() {
         try {
           const arr = Array.isArray(payload) ? payload.slice() : [payload];
           sampleBufferRef.current = (sampleBufferRef.current || []).concat(arr).slice(-1000);
-          if (sampleBufferRef.current.length % 50 === 0) console.debug('emitToSocket: buffered samples count', sampleBufferRef.current.length);
         } catch (e) { console.warn('buffer failed', e); }
         return;
       }
@@ -93,7 +92,7 @@ function Breaths() {
   if (typeof payload.breathIn === 'number') enriched.breathIn = payload.breathIn;
   if (typeof payload.breathOut === 'number') enriched.breathOut = payload.breathOut;
   if (typeof payload.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = payload.avgRespiratoryRate;
-  console.debug('emitToSocket -> emitting breath_data', { code: enriched.code, samples: enriched.samples.length, breathIn: enriched.breathIn, breathOut: enriched.breathOut, avg: enriched.avgRespiratoryRate });
+  // emitToSocket: sending breath_data (no debug output)
       s.emit('breath_data', enriched);
     } catch (e) { console.warn('emit failed', e); }
   };
@@ -106,7 +105,7 @@ function Breaths() {
       const r = await axios.get(`${API_BASE}/api/breaths`, { withCredentials: true });
       if (r?.data?.sessions) setSessions(r.data.sessions);
     } catch (e) {
-      console.debug('Failed to load breath sessions', e && e.response ? e.response.data : e);
+      console.warn('Failed to load breath sessions', e && e.response ? e.response.data : e);
     } finally {
       setLoadingSessions(false);
     }
@@ -158,13 +157,13 @@ function Breaths() {
     try {
       const s = io(API_BASE, { withCredentials: true });
       socketRef.current = s;
-      // common socket handlers
-      s.on('connect', () => console.debug('socket connected', s.id));
-      s.on('connect_error', (err) => console.debug('socket connect_error', err));
-      s.on('disconnect', () => console.debug('socket disconnected'));
+  // common socket handlers
+  s.on('connect', () => {});
+  s.on('connect_error', (err) => console.warn('socket connect_error', err));
+  s.on('disconnect', () => {});
       s.on('session_created', ({ code }) => {
         try { localStorage.setItem('sessionCode', code); localStorage.setItem('sessionRole', 'producer'); } catch (e) { console.warn('localStorage set failed', e); }
-        console.debug('socket session_created -> code', code);
+  // session created
         setShareCode(code);
         setSessionInfo((p) => ({ ...p, code, role: 'producer' }));
         window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
@@ -174,14 +173,14 @@ function Breaths() {
         try {
           const buf = sampleBufferRef.current || [];
           if (buf.length) {
-            console.debug('Flushing buffered samples after session_created', buf.length);
+            // flushing buffered samples after session_created
             // try to attach last known summary fields if present in buffered samples
             const last = buf[buf.length - 1] || {};
             const enriched = { code, samples: buf.slice() };
             if (typeof last.breathIn === 'number') enriched.breathIn = last.breathIn;
             if (typeof last.breathOut === 'number') enriched.breathOut = last.breathOut;
             if (typeof last.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = last.avgRespiratoryRate;
-            try { console.debug('Flushing enriched summary', { code: enriched.code, samples: enriched.samples.length, breathIn: enriched.breathIn, breathOut: enriched.breathOut, avg: enriched.avgRespiratoryRate }); } catch (err) { console.warn('flush log failed', err); }
+            try { /* flushed enriched summary (no debug) */ } catch (err) { console.warn('flush log failed', err); }
             try { s.emit('breath_data', enriched); } catch (e) { console.warn('flush emit failed', e); }
             sampleBufferRef.current = [];
           }
@@ -204,7 +203,6 @@ function Breaths() {
         setSessionInfo((prev) => ({ ...prev, listeners: Math.max(0, (prev.listeners || 1) - 1) }));
       });
       s.on('breath_data', (payload) => {
-        console.log('socket received breath_data:', payload && (payload.code ? `[code ${payload.code}]` : '[no-code]'), payload && (payload.samples ? payload.samples.length + ' samples' : 'no samples'));
         // forward to window so BreathTracker (listener) can receive without prop wiring
         window.dispatchEvent(new CustomEvent('socket:breath_data', { detail: payload }));
         try {
@@ -343,11 +341,11 @@ function Breaths() {
                   onSample={emitToSocket}
                   onSave={async (session) => {
                     // Called by BreathTracker only when parent requested a save
-                    console.debug('Breaths.onSave received session', session);
+                // received session to save
                     try {
                       setSavingSession(true);
                       const res = await axios.post(`${API_BASE}/api/breaths`, session, { withCredentials: true });
-                      console.debug('Breaths.onSave POST response', res && res.status, res && res.data);
+                      // POST response received
                       // mark saved and refresh list
                       if (res?.data?.id) setSavedSessionId(res.data.id);
                       await loadSessions();
@@ -372,7 +370,7 @@ function Breaths() {
                   <div>
                     <button
                       onClick={() => {
-                        console.debug('Breaths: Start/Pause clicked, trackingStarted=', trackingStarted, 'everStarted=', everStarted);
+                        // Start/Pause clicked
                         setSavedSessionId(null);
                         if (trackingStarted) setTrackingStarted(false);
                         else if (everStarted) setTrackingStarted(true);
@@ -439,8 +437,8 @@ function Breaths() {
 
                 {trackingStarted && (
                   <div className="flex gap-2">
-                    <button onClick={() => { console.debug('Breaths: Reset clicked'); setResetCounter((c) => c + 1); setEverStarted(false); setTrackingStarted(false); setSavedSessionId(null); }} className="btn btn-outline flex-1">Reset</button>
-                    <button onClick={() => { console.debug('Breaths: Stop & Save clicked -> request save and stop'); setSaveRequested(true); setTrackingStarted(false); }} className="btn btn-primary flex-1" disabled={savingSession}>{savingSession ? 'Saving...' : 'Stop & Save'}</button>
+                    <button onClick={() => { setResetCounter((c) => c + 1); setEverStarted(false); setTrackingStarted(false); setSavedSessionId(null); }} className="btn btn-outline flex-1">Reset</button>
+                    <button onClick={() => { setSaveRequested(true); setTrackingStarted(false); }} className="btn btn-primary flex-1" disabled={savingSession}>{savingSession ? 'Saving...' : 'Stop & Save'}</button>
                   </div>
                 )}
 
