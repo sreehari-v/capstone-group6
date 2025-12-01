@@ -2,9 +2,20 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+const API_BASE =
+  import.meta.env.VITE_API_BASE ||
+  import.meta.env.REACT_APP_API_BASE ||
+  "http://localhost:5000";
+
 const Overview = () => {
   const [medicines, setMedicines] = useState([]);
-  const [stepsToday] = useState(4200);
+
+  // Steps state (coming from backend summary)
+  const [stepsToday, setStepsToday] = useState(0);
+  const [weeklyTotal, setWeeklyTotal] = useState(0);
+  const [weeklyByDay, setWeeklyByDay] = useState([]); // new
+  const [loadingSteps, setLoadingSteps] = useState(false);
+
   const goal = 10000;
 
   const [breathLast] = useState({ bpm: 16, min: 11, max: 22 });
@@ -28,6 +39,7 @@ const Overview = () => {
     verifyUser();
   }, [navigate]);
 
+  // Load medicines
   useEffect(() => {
     const fetchMeds = async () => {
       try {
@@ -74,7 +86,25 @@ const Overview = () => {
   }, [medicines]);
 
   const stepsProgress = Math.round((stepsToday / goal) * 100);
-  const weekly = [4200, 5600, 7000, 8000, 9500, 4000, stepsToday];
+
+  // Prepare weekly bars from weeklyByDay
+  const weeklyBars = useMemo(() => {
+    if (!weeklyByDay || weeklyByDay.length === 0) {
+      // fallback: 7 zeros
+      return Array.from({ length: 7 }, () => ({ date: null, steps: 0 }));
+    }
+    // ensure exactly 7 entries oldest -> newest
+    const arr = weeklyByDay.slice(-7);
+    if (arr.length < 7) {
+      const padCount = 7 - arr.length;
+      const padded = Array.from({ length: padCount }, () => ({
+        date: null,
+        steps: 0,
+      }));
+      return [...padded, ...arr];
+    }
+    return arr;
+  }, [weeklyByDay]);
 
   const medicinesSummary = useMemo(() => {
     const counts = { Morning: 0, Afternoon: 0, Evening: 0, Night: 0 };
@@ -92,41 +122,63 @@ const Overview = () => {
       0.3 * 100
   );
 
+  const formatDayLabel = (isoDate, fallbackIndex) => {
+    if (!isoDate) {
+      return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][fallbackIndex];
+    }
+    const d = new Date(isoDate);
+    return d.toLocaleDateString(undefined, { weekday: "short" });
+  };
+
   return (
     <div className="layout-content-container flex flex-col w-full flex-1 overflow-y-auto p-4">
-
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
         <h1 className="text-3xl font-bold">Overview</h1>
 
         {/* Buttons: stack below title on small screens, inline on md+ */}
         <div className="flex flex-wrap gap-3">
-          <Link to="/dashboard/steps" className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200">
+          <Link
+            to="/dashboard/steps"
+            className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200"
+          >
             Start Walk
           </Link>
-          <Link to="/dashboard/breath" className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200">
+          <Link
+            to="/dashboard/breath"
+            className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200"
+          >
             Start Breath Tracking
           </Link>
-          <Link to="/dashboard/medication" className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200">
+          <Link
+            to="/dashboard/medication"
+            className="px-4 py-2 bg-slate-100 rounded shadow hover:bg-slate-200"
+          >
             Add Medicine
           </Link>
         </div>
       </div>
 
-  {/* TOP STATS GRID */}
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-
+      {/* TOP STATS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {/* Steps */}
-  <div className="p-4 bg-white rounded-xl shadow min-w-0">
-          <div className="text-sm text-gray-500">Steps Today</div>
-          <div className="text-3xl font-bold mt-1">{stepsToday.toLocaleString()}</div>
+        <div className="p-4 bg-white rounded-xl shadow min-w-0">
+          <div className="text-sm text-gray-500 flex items-center justify-between">
+            <span>Steps Today</span>
+            {loadingSteps && (
+              <span className="text-[10px] text-gray-400">Loading…</span>
+            )}
+          </div>
+          <div className="text-3xl font-bold mt-1">
+            {stepsToday.toLocaleString()}
+          </div>
           <div className="text-sm text-gray-500 mt-1">
             {stepsProgress}% of {goal.toLocaleString()}
           </div>
         </div>
 
         {/* Breathing */}
-  <div className="p-4 bg-white rounded-xl shadow min-w-0">
+        <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Breathing</div>
           <div className="text-3xl font-bold mt-1">{breathLast.bpm} BPM</div>
           <div className="text-sm text-gray-600 mt-1">
@@ -136,22 +188,29 @@ const Overview = () => {
               ? "Low"
               : "Elevated"}
           </div>
-          <Link to="/dashboard/breath" className="text-sm text-blue-600 mt-2 block">
+          <Link
+            to="/dashboard/breath"
+            className="text-sm text-blue-600 mt-2 block"
+          >
             View Details
           </Link>
         </div>
 
         {/* Medicine Summary */}
-  <div className="p-4 bg-white rounded-xl shadow min-w-0">
+        <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Medicines Today</div>
-          <div className="text-3xl font-bold mt-1">{medicinesSummary.total}</div>
+          <div className="text-3xl font-bold mt-1">
+            {medicinesSummary.total}
+          </div>
           <div className="text-sm text-gray-600 mt-1">
-            M ({medicinesSummary.counts.Morning}) • A ({medicinesSummary.counts.Afternoon}) • N ({medicinesSummary.counts.Night})
+            M ({medicinesSummary.counts.Morning}) • A (
+            {medicinesSummary.counts.Afternoon}) • N (
+            {medicinesSummary.counts.Night})
           </div>
         </div>
 
         {/* Active Session */}
-  <div className="p-4 bg-white rounded-xl shadow min-w-0">
+        <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Active Session</div>
           <div className="text-xl font-bold mt-1">{sessionInfo.code ? 'Session active' : 'No active session'}</div>
           <div className="text-sm text-gray-600">Viewer Code: {sessionInfo.code || "—"}</div>
@@ -159,16 +218,17 @@ const Overview = () => {
         </div>
       </div>
 
-      {/* --- DAILY HEALTH SCORE MOVED UP HERE --- */}
-  <div className="bg-white rounded-xl shadow p-6 mb-6 min-w-0">
+      {/* DAILY HEALTH SCORE */}
+      <div className="bg-white rounded-xl shadow p-6 mb-6 min-w-0">
         <h3 className="font-semibold text-lg mb-4">Daily Health Score</h3>
 
-  <div className="flex flex-col md:flex-row items-center md:justify-between gap-4">
-
+        <div className="flex flex-col md:flex-row items-center md:justify-between gap-4">
           {/* Score Text */}
           <div className="min-w-0">
             <div className="text-5xl font-bold">{score}</div>
-            <div className="text-sm text-gray-600 mt-1">Healthy routine maintained.</div>
+            <div className="text-sm text-gray-600 mt-1">
+              Healthy routine maintained.
+            </div>
           </div>
 
           {/* Circle */}
@@ -179,32 +239,113 @@ const Overview = () => {
       </div>
 
       {/* MIDDLE SECTION */}
-  <div className="grid md:grid-cols-3 gap-4">
-
+      <div className="grid md:grid-cols-3 gap-4">
         {/* Weekly Steps */}
-  <div className="bg-white rounded-xl shadow p-4 md:col-span-2 min-w-0">
+        <div className="bg-white rounded-xl shadow p-4 md:col-span-2 min-w-0">
           <h3 className="font-semibold text-lg mb-3">Weekly Steps</h3>
 
-          <div className="flex items-end gap-3 h-36">
-            {weekly.map((val, i) => {
-              const h = Math.max(10, Math.round((val / goal) * 100));
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: "12px",
+              height: "180px",
+              position: "relative",
+            }}
+          >
+            {weeklyBars.map((d, i) => {
+              const steps = Number(d.steps) || 0;
+              const maxSteps =
+                weeklyBars.reduce(
+                  (max, item) => Math.max(max, Number(item.steps) || 0),
+                  0
+                ) || 1;
+
+              const ratio = steps / maxSteps;
+              const barHeight = 20 + ratio * 120;
+
+              const dayLabel = formatDayLabel(d.date, i);
+
               return (
-                <div key={i} className="flex-1 text-center">
+                <div
+                  key={i}
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    position: "relative",
+                  }}
+                >
+                  {/* Tooltip on Hover */}
                   <div
-                    className="w-6 mx-auto bg-sky-500 rounded-sm"
-                    style={{ height: `${h}%` }}
+                    style={{
+                      position: "absolute",
+                      bottom: `${barHeight + 8}px`,
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      padding: "4px 8px",
+                      background: "rgba(0,0,0,0.75)",
+                      color: "#fff",
+                      fontSize: "10px",
+                      borderRadius: "4px",
+                      whiteSpace: "nowrap",
+                      pointerEvents: "none",
+                      zIndex: 10,
+                      opacity: steps ? 0 : 0, // default hidden
+                    }}
+                    className="tooltip"
+                  >
+                    {dayLabel}: {steps.toLocaleString()} steps
+                  </div>
+
+                  {/* Bar */}
+                  <div
+                    style={{
+                      width: "14px",
+                      height: `${barHeight}px`,
+                      margin: "0 auto",
+                      borderRadius: "4px",
+                      backgroundColor: "#0ea5e9",
+                      cursor: "pointer",
+                      transition: "background-color 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.previousSibling.style.opacity = 1;
+                      e.currentTarget.style.backgroundColor = "#0284c7"; // darker on hover
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.previousSibling.style.opacity = 0;
+                      e.currentTarget.style.backgroundColor = "#0ea5e9";
+                    }}
                   ></div>
-                  <div className="text-xs mt-1">
-                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][i]}
+
+                  {/* Labels */}
+                  <div style={{ fontSize: "0.75rem", marginTop: "4px" }}>
+                    {dayLabel}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "0.625rem",
+                      color: "#6b7280",
+                      marginTop: "2px",
+                    }}
+                  >
+                    {steps.toLocaleString()}
                   </div>
                 </div>
               );
             })}
           </div>
+
+          <div className="text-sm text-gray-600 mt-3">
+            Weekly total:{" "}
+            <span className="font-semibold">
+              {weeklyTotal.toLocaleString()} steps
+            </span>
+          </div>
         </div>
 
-        {/* --- UPCOMING MEDICINES MOVED DOWN HERE --- */}
-  <div className="bg-white rounded-xl shadow p-4 md:col-span-1 min-w-0">
+        {/* Upcoming Medicines */}
+        <div className="bg-white rounded-xl shadow p-4 md:col-span-1 min-w-0">
           <h3 className="font-semibold text-lg mb-3">Upcoming Medicines</h3>
 
           {medsToday.length === 0 && (
@@ -212,7 +353,10 @@ const Overview = () => {
           )}
 
           {medsToday.map((m) => (
-            <div key={m._id} className="flex justify-between items-center py-2 border-b last:border-b-0">
+            <div
+              key={m._id}
+              className="flex justify-between items-center py-2 border-b last:border-b-0"
+            >
               <div className="min-w-0">
                 <div className="font-medium break-words">{m.name}</div>
                 <div className="text-sm text-gray-500">
@@ -224,7 +368,6 @@ const Overview = () => {
           ))}
         </div>
       </div>
-
     </div>
   );
 };
