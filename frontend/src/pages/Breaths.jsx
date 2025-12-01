@@ -25,6 +25,8 @@ function Breaths() {
   const [sessionInfo, setSessionInfo] = useState(() => ({ code: typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null, listeners: 0, role: null }));
   const [hasSensor, setHasSensor] = useState(true);
   const socketRef = useRef(null);
+  const [lastReceivedSample, setLastReceivedSample] = useState(null);
+  const [receivedSampleCount, setReceivedSampleCount] = useState(0);
   const sampleBufferRef = useRef([]);
 
   const notify = (message, type = 'info') => {
@@ -187,9 +189,17 @@ function Breaths() {
         setSessionInfo((prev) => ({ ...prev, listeners: Math.max(0, (prev.listeners || 1) - 1) }));
       });
       s.on('breath_data', (payload) => {
-        console.debug('socket received breath_data:', payload && (payload.code ? `[code ${payload.code}]` : '[no-code]'), payload && (payload.samples ? payload.samples.length + ' samples' : 'no samples'));
+        console.log('socket received breath_data:', payload && (payload.code ? `[code ${payload.code}]` : '[no-code]'), payload && (payload.samples ? payload.samples.length + ' samples' : 'no samples'));
         // forward to window so BreathTracker (listener) can receive without prop wiring
         window.dispatchEvent(new CustomEvent('socket:breath_data', { detail: payload }));
+        try {
+          const samples = Array.isArray(payload.samples) ? payload.samples : (payload.samples ? [payload.samples] : []);
+          if (samples && samples.length) {
+            // update small UI indicators
+            try { setReceivedSampleCount((c) => c + samples.length); } catch (err) { console.warn('update count failed', err); }
+            try { setLastReceivedSample(samples[samples.length - 1]); } catch (err) { console.warn('update last sample failed', err); }
+          }
+        } catch { /* ignore */ }
       });
       s.on('session_snapshot', (snapshot) => {
         window.dispatchEvent(new CustomEvent('socket:session_snapshot', { detail: snapshot }));
@@ -434,6 +444,7 @@ function Breaths() {
                         <div className="text-lg font-semibold mt-1">{sessionInfo.code}</div>
                         <div className="text-xs text-gray-500">Role: {sessionInfo.role || '—'}</div>
                         <div className="text-xs text-gray-500">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
+                        <div className="text-xs text-gray-500 mt-1">Received: {receivedSampleCount} samples{lastReceivedSample ? ` — last ${Number(lastReceivedSample.v).toFixed(4)} @ ${new Date(lastReceivedSample.t).toLocaleTimeString()}` : ''}</div>
                         <div className="mt-2 flex gap-2">
                           <button className="btn btn-sm btn-outline" onClick={async () => { try { await navigator.clipboard.writeText(sessionInfo.code); notify('Code copied', 'success'); } catch { notify('Copy failed', 'error'); } }}>Copy code</button>
                           {hasSensor && (
