@@ -439,7 +439,7 @@ function Breaths() {
             <h2 className="text-lg font-semibold dark:text-white">
               Live Breath Graph
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 dark:text-white">
               Real-time waveform & stats
             </p>
           </div>

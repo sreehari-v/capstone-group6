@@ -42,33 +42,30 @@ export default function BreathTracker({
     if (active) {
       setStatus("Requesting motion access…");
 
+      // BPM smoothing timer
       if (bpmTimerRef.current) clearInterval(bpmTimerRef.current);
       bpmTimerRef.current = setInterval(() => {
-        try {
-          const now = Date.now();
-          const windowMs = 60_000;
-          const recent = cycleTimesRef.current.filter(
-            (t) => t >= now - windowMs
-          );
+        const now = Date.now();
+        const recent = cycleTimesRef.current.filter(
+          (t) => t >= now - 60000
+        );
 
-          if (recent.length < 2) {
-            bpmRef.current *= 0.9;
-            setBpm(Math.round(bpmRef.current));
-            return;
-          }
-
-          const first = recent[0];
-          const last = recent[recent.length - 1];
-          const intervals = recent.length - 1;
-
-          const meanMs = (last - first) / intervals;
-          const insta = 60000 / meanMs;
-
-          bpmRef.current = 0.25 * insta + 0.75 * bpmRef.current;
+        if (recent.length < 2) {
+          bpmRef.current *= 0.9;
           setBpm(Math.round(bpmRef.current));
-        } catch {}
+          return;
+        }
+
+        const first = recent[0];
+        const last = recent[recent.length - 1];
+        const meanMs = (last - first) / (recent.length - 1);
+        const instant = 60000 / meanMs;
+
+        bpmRef.current = 0.25 * instant + 0.75 * bpmRef.current;
+        setBpm(Math.round(bpmRef.current));
       }, 1000);
 
+      // FILTER PARAMETERS
       const gravityAlpha = 0.98;
       const motionAlpha = 0.4;
       const emaAlpha = 0.05;
@@ -83,56 +80,62 @@ export default function BreathTracker({
         const acc = ev.accelerationIncludingGravity || ev.acceleration;
         if (!acc) return;
 
+        // Use best axis available
         const raw = acc.y ?? acc.x ?? acc.z ?? 0;
 
+        // Remove gravity bias
         gravityRef.current =
           gravityAlpha * gravityRef.current + (1 - gravityAlpha) * raw;
 
         const motion = raw - gravityRef.current;
 
+        // Low-pass
         const filtered =
           motionAlpha * lastFiltered.current +
           (1 - motionAlpha) * motion;
 
         lastFiltered.current = filtered;
 
-        // adaptive threshold
+        // Adaptive variance
         emaMean = emaAlpha * filtered + (1 - emaAlpha) * emaMean;
-        emaSq = emaAlpha * filtered * filtered + (1 - emaAlpha) * emaSq;
+        emaSq = emaAlpha * (filtered * filtered) + (1 - emaAlpha) * emaSq;
 
         const variance = Math.max(0, emaSq - emaMean * emaMean);
         const std = Math.sqrt(variance);
 
+        // Sensitivity → threshold
         const s = Math.min(5, Math.max(1, sensitivity));
-        const multiplier = 1.8 - (s - 1) * 0.3; // sensitivity → multiplier mapping
+        const multiplier = 1.8 - (s - 1) * 0.3;
         const threshold = Math.max(0.002, std * multiplier);
 
-        // first valid motion marks session start
+        // FIRST REAL MOTION → start
         if (!startedAtRef.current && Math.abs(filtered) > threshold) {
-          const now = new Date();
-          startedAtRef.current = now;
+          startedAtRef.current = new Date();
           setStatus("Tracking…");
         }
 
-        // Sample graph point every ~120ms
+        // GRAPH SAMPLE every ~120ms
         if (!lastPointTime || t - lastPointTime > 120) {
           const p = { x: t, y: Number(filtered.toFixed(4)) };
-          pointsRef.current = pointsRef.current
-            .concat(p)
-            .slice(-400);
-
+          pointsRef.current = pointsRef.current.concat(p).slice(-400);
           setPoints(pointsRef.current.slice());
 
-          try {
-            if (typeof onSample === "function") {
-              onSample({ t: p.x, v: p.y, value: p.y });
-            }
-          } catch {}
+          // SEND TO LIVE SHARING
+          if (typeof onSample === "function") {
+            onSample({
+              t: p.x,
+              v: p.y,
+              value: p.y,
+              breathIn,
+              breathOut,
+              avgRespiratoryRate: Math.round(bpmRef.current),
+            });
+          }
 
           lastPointTime = t;
         }
 
-        // Detect inhale/exhale events
+        // INHALE / EXHALE DETECTION
         const minGap = 300;
 
         if (
@@ -155,7 +158,7 @@ export default function BreathTracker({
           lastDetectTime = t;
         }
 
-        // Pair cycles
+        // Cycle pairing
         while (
           cycleTimesRef.current.length <
           Math.min(
@@ -164,17 +167,17 @@ export default function BreathTracker({
           )
         ) {
           const idx = cycleTimesRef.current.length;
-          const iT = inhaleTimesRef.current[idx];
-          const eT = exhaleTimesRef.current[idx];
-          const cycleT = Math.max(iT, eT);
-
-          cycleTimesRef.current.push(cycleT);
+          const cycle = Math.max(
+            inhaleTimesRef.current[idx],
+            exhaleTimesRef.current[idx]
+          );
+          cycleTimesRef.current.push(cycle);
           if (cycleTimesRef.current.length > 200)
             cycleTimesRef.current.shift();
         }
       };
 
-      // permission for iOS
+      // iOS permission flow
       try {
         if (
           typeof DeviceMotionEvent !== "undefined" &&
@@ -184,9 +187,7 @@ export default function BreathTracker({
             .then((resp) => {
               if (resp === "granted") {
                 window.addEventListener("devicemotion", handler, true);
-              } else {
-                setStatus("Motion permission denied");
-              }
+              } else setStatus("Motion permission denied");
             })
             .catch(() => {
               window.addEventListener("devicemotion", handler, true);
@@ -199,36 +200,38 @@ export default function BreathTracker({
       }
 
       listenerRef.current = handler;
-    } else {
-      // STOP TRACKING
+    }
+
+    // ─────────────────────────────────────────────
+    // STOP TRACKING
+    // ─────────────────────────────────────────────
+    else {
       try {
-        if (listenerRef.current) {
+        if (listenerRef.current)
           window.removeEventListener("devicemotion", listenerRef.current, true);
-          listenerRef.current = null;
-        }
+        listenerRef.current = null;
       } catch {}
 
       try {
-        if (bpmTimerRef.current) {
+        if (bpmTimerRef.current)
           clearInterval(bpmTimerRef.current);
-          bpmTimerRef.current = null;
-        }
+        bpmTimerRef.current = null;
       } catch {}
 
-      // finalize session payload
       try {
-        if (typeof onStop === "function") onStop();
+        if (onStop) onStop();
       } catch {}
 
+      // Save session
       if (shouldSave && startedAtRef.current) {
         const endedAt = new Date();
         const started = startedAtRef.current;
-        const durationMs = endedAt - started;
+        const durationSeconds = +((endedAt - started) / 1000).toFixed(3);
 
         const session = {
           startedAt: started.toISOString(),
           endedAt: endedAt.toISOString(),
-          durationSeconds: +(durationMs / 1000).toFixed(3),
+          durationSeconds,
           avgRespiratoryRate: bpm,
           breathIn,
           breathOut,
@@ -256,19 +259,17 @@ export default function BreathTracker({
 
     return () => {
       try {
-        if (listenerRef.current) {
+        if (listenerRef.current)
           window.removeEventListener("devicemotion", listenerRef.current, true);
-          listenerRef.current = null;
-        }
+        listenerRef.current = null;
       } catch {}
       try {
-        if (bpmTimerRef.current) {
+        if (bpmTimerRef.current)
           clearInterval(bpmTimerRef.current);
-          bpmTimerRef.current = null;
-        }
+        bpmTimerRef.current = null;
       } catch {}
     };
-  }, [active, shouldSave, sensitivity]);
+  }, [active, sensitivity, shouldSave]);
 
   // ─────────────────────────────────────────────
   // RESET HANDLER
@@ -283,6 +284,7 @@ export default function BreathTracker({
     exhaleTimesRef.current = [];
     cycleTimesRef.current = [];
     pointsRef.current = [];
+    startedAtRef.current = null;
   }, [resetSignal]);
 
   // ─────────────────────────────────────────────
@@ -296,11 +298,7 @@ export default function BreathTracker({
       background: "transparent",
     },
     xaxis: { type: "datetime" },
-    stroke: {
-      curve: "smooth",
-      width: 3,
-      colors: ["#1193d4"],
-    },
+    stroke: { curve: "smooth", width: 3, colors: ["#1193d4"] },
     tooltip: { enabled: true },
     grid: {
       borderColor: "#475569",
@@ -345,16 +343,15 @@ export default function BreathTracker({
   );
 }
 
-// helper UI
 function Box({ label, value, highlight = false }) {
   return (
     <div
       className="
-      p-3 rounded 
-      bg-white dark:bg-[#1e293b]
-      border border-slate-200 dark:border-slate-700
-      text-[#0d171b] dark:text-white
-    "
+        p-3 rounded 
+        bg-white dark:bg-[#1e293b]
+        border border-slate-200 dark:border-slate-700
+        text-[#0d171b] dark:text-white
+      "
     >
       <div className="text-sm text-gray-600 dark:text-gray-300">
         {label}
