@@ -28,6 +28,17 @@ function Breaths() {
   const [lastReceivedSample, setLastReceivedSample] = useState(null);
   const [receivedSampleCount, setReceivedSampleCount] = useState(0);
   const sampleBufferRef = useRef([]);
+  const [remotePaused, setRemotePaused] = useState(false);
+
+  // When acting as a listener, auto-start the visual tracker when samples arrive
+  useEffect(() => {
+    try {
+      if (sessionInfo && sessionInfo.role === 'listener' && (receivedSampleCount > 0 || sessionInfo.streaming) && !trackingStarted) {
+        setTrackingStarted(true);
+        setEverStarted(true);
+      }
+    } catch { /* ignore */ }
+  }, [receivedSampleCount, sessionInfo, trackingStarted]);
 
   const notify = (message, type = 'info') => {
     try {
@@ -339,6 +350,7 @@ function Breaths() {
                   onStop={() => setTrackingStarted(false)}
                   onError={(err) => { setSensorError(err); setTrackingStarted(false); }}
                   onSample={emitToSocket}
+                  remoteActive={!remotePaused}
                   onSave={async (session) => {
                     // Called by BreathTracker only when parent requested a save
                 // received session to save
@@ -464,6 +476,14 @@ function Breaths() {
                             <button className="btn btn-sm btn-primary" onClick={() => { setShowShareModal(true); }}>Share</button>
                           )}
                         </div>
+                        {/* Listener controls: pause, save, stop — shown when this device is a listener */}
+                        {sessionInfo && sessionInfo.role === 'listener' && (
+                          <div className="mt-3 flex gap-2">
+                            <button className="btn btn-sm btn-outline" onClick={() => setRemotePaused((p) => !p)}>{remotePaused ? 'Resume' : 'Pause'}</button>
+                            <button className="btn btn-sm btn-primary" onClick={() => { setSaveRequested(true); }} disabled={savingSession}>{savingSession ? 'Saving...' : 'Save'}</button>
+                            <button className="btn btn-sm btn-warning" onClick={() => { setRemotePaused(false); setTrackingStarted(false); }}>{'Stop'}</button>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <div className="text-sm text-gray-600 mt-1">No active session</div>

@@ -14,6 +14,8 @@ export default function BreathTracker({
   sensitivity = 3,
   // optional callback invoked for each new sample { x, y }
   onSample = null,
+  // when false, ignore incoming remote samples (used by listeners to pause)
+  remoteActive = true,
 }) {
   // Simplified tracker: no sensors, no sockets. Keep UI only.
   const [status, setStatus] = useState("Idle — press Start to begin");
@@ -35,6 +37,26 @@ export default function BreathTracker({
   const listenerRef = useRef(null);
   const bpmRef = useRef(0);
   const bpmTimerRef = useRef(null);
+
+  // build session helper available to the component scope
+  const buildSession = (endedAt = new Date()) => {
+    const started = startedAtRef.current || startedAt || new Date(endedAt.getTime());
+    const durationMs = Math.max(0, endedAt - started);
+    const durationSeconds = +(durationMs / 1000).toFixed(3);
+    return {
+      startedAt: startedAt ? startedAt.toISOString() : (started ? new Date(started).toISOString() : new Date().toISOString()),
+      endedAt: endedAt.toISOString(),
+      durationSeconds,
+      avgRespiratoryRate: bpm || 0,
+      breathIn: breathIn || 0,
+      breathOut: breathOut || 0,
+      totalBreaths: Math.floor((breathIn + breathOut) / 2) || 0,
+      samples: (pointsRef.current || []).filter((p) => {
+        return p && p.x && p.x >= (started ? new Date(started).getTime() : 0) && p.x <= endedAt.getTime();
+      }).map((p) => ({ t: p.x, v: p.y, value: p.y })),
+      cycleTimestamps: (cycleTimesRef.current || []).slice(),
+    };
+  };
 
   useEffect(() => {
     if (active) {
@@ -104,7 +126,7 @@ export default function BreathTracker({
           setStatus("Tracking — collecting motion data");
         }
 
-        // append point at most every 120ms
+    // append point at most every 120ms
         if (!lastEventTime || t - lastEventTime > 120) {
           const p = { x: t, y: Number(filtered.toFixed(4)) };
           pointsRef.current = pointsRef.current.concat(p).slice(-400);
@@ -211,27 +233,7 @@ export default function BreathTracker({
       }
 
   const endedAt = new Date();
-  const started = startedAtRef.current || startedAt || new Date(endedAt.getTime());
-  const durationMs = Math.max(0, endedAt - started);
-      const durationSeconds = +(durationMs / 1000).toFixed(3);
-
-      // Build the session payload with collected data. Include sample points so the
-      // backend stores the waveform if available. Each sample has { x: timestamp, y: value }.
-      const session = {
-        startedAt: startedAt ? startedAt.toISOString() : new Date().toISOString(),
-        endedAt: endedAt.toISOString(),
-        durationSeconds,
-        avgRespiratoryRate: bpm || 0,
-        breathIn: breathIn || 0,
-        breathOut: breathOut || 0,
-        totalBreaths: total || 0,
-        // include only samples within the session window and include raw value
-        samples: (pointsRef.current || []).filter((p) => {
-          return p && p.x && p.x >= (started ? started.getTime() : 0) && p.x <= endedAt.getTime();
-        }).map((p) => ({ t: p.x, v: p.y, value: p.y })),
-        // include cycle timestamps (ms) for advanced analysis if available
-  cycleTimestamps: (cycleTimesRef.current || []).slice(),
-      };
+  const session = buildSession(endedAt);
 
       // Only persist when parent explicitly requests a save. This avoids accidental
       // session inserts during navigations or page refreshes where the component
@@ -242,7 +244,7 @@ export default function BreathTracker({
         } catch (err) {
           console.warn("BreathTracker onSave failed", err);
         }
-  try { onSaved(); } catch { /* ignore */ }
+        try { onSaved(); } catch { /* ignore */ }
       }
 
       setStatus("Stopped");
@@ -272,8 +274,19 @@ export default function BreathTracker({
   useEffect(() => {
     const handler = (ev) => {
       const payload = ev && ev.detail ? ev.detail : ev;
+      if (!remoteActive) return; // paused by parent
       if (!payload) return;
       const samples = Array.isArray(payload.samples) ? payload.samples : (Array.isArray(payload) ? payload : (payload.t ? [payload] : []));
+      // set startedAt on first received remote sample so session duration is accurate
+      try {
+        if (samples.length && !startedAtRef.current) {
+          const t0 = samples[0].t || samples[0].x || Date.now();
+          const nowDate = new Date(t0);
+          startedAtRef.current = nowDate;
+          try { setStartedAt(nowDate); } catch { /* ignore */ }
+          setStatus('Tracking — receiving remote data');
+        }
+  } catch { /* ignore */ }
       if (samples.length) {
         try {
           const mapped = samples.map((s) => ({ x: s.t || s.x, y: Number((s.v ?? s.y ?? s.value ?? 0).toFixed ? (s.v ?? s.y ?? s.value ?? 0) : Number(s.v ?? s.y ?? s.value ?? 0)) }));
@@ -305,7 +318,22 @@ export default function BreathTracker({
       try { window.removeEventListener('socket:breath_data', handler); } catch { /* ignore */ }
       try { window.removeEventListener('socket:session_snapshot', handler); } catch { /* ignore */ }
     };
-  }, []);
+  }, [remoteActive]);
+
+  // handle immediate save requests from parent (shouldSave toggle)
+  useEffect(() => {
+    if (!shouldSave) return;
+    try {
+      const session = buildSession(new Date());
+      if (typeof onSave === 'function') {
+        try { onSave(session); } catch (err) { console.warn('BreathTracker onSave failed', err); }
+      }
+      try { onSaved(); } catch { /* ignore */ }
+    } catch (err) {
+      console.warn('BreathTracker immediate save failed', err);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shouldSave]);
 
   const total = Math.floor((breathIn + breathOut) / 2);
 
