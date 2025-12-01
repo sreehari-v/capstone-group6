@@ -116,6 +116,8 @@ function Breaths() {
 
   const summary = computeSummary(sessions);
 
+  const isConnected = sessionInfo && sessionInfo.code && (sessionInfo.listeners > 0 || sessionInfo.role === 'listener' || sessionInfo.streaming);
+
   // compute the last (or saved) session for details card
   const lastSession = useMemo(() => {
     if (!sessions || !sessions.length) return null;
@@ -218,29 +220,79 @@ function Breaths() {
 
             <div className="lg:col-span-1">
               <div className="flex flex-col gap-3">
-                {/* Show local tracking controls only if the device has a motion sensor, or
-                    if this is a listener device and a remote producer is streaming. */}
-                { (hasSensor || (sessionInfo && sessionInfo.role === 'listener' && sessionInfo.streaming)) ? (
-                  <button
-                    onClick={() => {
-                      console.debug('Breaths: Start/Pause clicked, trackingStarted=', trackingStarted, 'everStarted=', everStarted);
-                      setSavedSessionId(null);
-                      if (trackingStarted) setTrackingStarted(false);
-                      else if (everStarted) setTrackingStarted(true);
-                      else setShowStartModal(true);
-                    }}
-                    className="btn btn-primary w-full"
-                  >
-                    {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
-                  </button>
+                {/* If device has a sensor (typically mobile): show tracking controls and
+                    options to create or join a live session. If device has no sensor
+                    (laptop/desktop) show only a join UI — this device will act as a receiver. */}
+                {hasSensor ? (
+                  <div>
+                    <button
+                      onClick={() => {
+                        console.debug('Breaths: Start/Pause clicked, trackingStarted=', trackingStarted, 'everStarted=', everStarted);
+                        setSavedSessionId(null);
+                        if (trackingStarted) setTrackingStarted(false);
+                        else if (everStarted) setTrackingStarted(true);
+                        else setShowStartModal(true);
+                      }}
+                      className="btn btn-primary w-full"
+                    >
+                      {trackingStarted ? 'Pause Tracking' : 'Start Tracking'}
+                    </button>
+
+                    <div className="mt-3">
+                      <div className="text-sm text-gray-600 mb-2">Live sharing</div>
+                      <div className="flex gap-2">
+                        <button className="btn btn-outline flex-1" onClick={() => {
+                          const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+                          setShareCode(code);
+                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
+                          setShowShareModal(true);
+                        }}>Create code</button>
+
+                        <div className="flex gap-2" style={{ minWidth: 0 }}>
+                          <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Enter code" className="flex-1 border rounded px-3 py-2" />
+                          <button className="btn btn-primary" onClick={async () => {
+                            const code = (joinCode || '').trim().toUpperCase();
+                            if (!code) { notify('Please enter a code to join', 'error'); return; }
+                            setJoining(true);
+                            try {
+                              // simulate join
+                              await new Promise((r) => setTimeout(r, 500));
+                              notify(`Joined session ${code}`, 'success');
+                              try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                              window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
+                              setShowShareModal(false);
+                              setJoinCode('');
+                            } catch {
+                              notify('Failed to join session', 'error');
+                            } finally { setJoining(false); }
+                          }}>{joining ? 'Joining…' : 'Join'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <button className="min-w-[160px] w-full cursor-pointer overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm" onClick={() => {
-                    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-                    setShareCode(code);
-                    try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                    window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
-                    setShowShareModal(true);
-                  }}>Link device</button>
+                  <div>
+                    <div className="text-sm font-medium mb-2">Join session</div>
+                    <div className="flex gap-2">
+                      <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Enter code" className="flex-1 border rounded px-3 py-2" />
+                      <button className="btn btn-primary" onClick={async () => {
+                        const code = (joinCode || '').trim().toUpperCase();
+                        if (!code) { notify('Please enter a code to join', 'error'); return; }
+                        setJoining(true);
+                        try {
+                          await new Promise((r) => setTimeout(r, 500));
+                          notify(`Joined session ${code}`, 'success');
+                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
+                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
+                          setJoinCode('');
+                        } catch {
+                          notify('Failed to join session', 'error');
+                        } finally { setJoining(false); }
+                      }}>{joining ? 'Joining…' : 'Join'}</button>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-2">This device will receive live data when a producer streams.</div>
+                  </div>
                 )}
 
                 {trackingStarted && (
@@ -258,15 +310,24 @@ function Breaths() {
                 )}
 
                 <div>
-                  {sessionInfo && sessionInfo.code ? (
-                    <div className="p-3 bg-slate-50 rounded mb-2">
-                      <div className="text-sm text-gray-600">Active Session</div>
-                      <div className="text-lg font-semibold mt-1">{sessionInfo.code}</div>
-                      <div className="text-xs text-gray-500">Role: {sessionInfo.role || '—'}</div>
-                      <div className="text-xs text-gray-500">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
-                    </div>
-                  ) : null}
-                  <div className="text-xs text-gray-500 mt-2">Share a code to let another device join your live session.</div>
+                  <div className="p-3 bg-slate-50 rounded mb-2">
+                    <div className="text-sm text-gray-600">Active Session</div>
+                    {isConnected ? (
+                      <>
+                        <div className="text-lg font-semibold mt-1">{sessionInfo.code}</div>
+                        <div className="text-xs text-gray-500">Role: {sessionInfo.role || '—'}</div>
+                        <div className="text-xs text-gray-500">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
+                        <div className="mt-2 flex gap-2">
+                          <button className="btn btn-sm btn-outline" onClick={async () => { try { await navigator.clipboard.writeText(sessionInfo.code); notify('Code copied', 'success'); } catch { notify('Copy failed', 'error'); } }}>Copy code</button>
+                          {hasSensor && (
+                            <button className="btn btn-sm btn-primary" onClick={() => { setShowShareModal(true); }}>Share</button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-sm text-gray-600 mt-1">No active session</div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-4 text-sm text-gray-600">Breath tracking on iOS requires tapping <b>Start Tracking</b> to grant motion access.</div>
