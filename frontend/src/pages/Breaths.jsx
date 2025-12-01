@@ -35,6 +35,26 @@ function Breaths() {
     }
   };
 
+  // Reconnect / re-establish socket when returning to the page.
+  useEffect(() => {
+    try {
+      const storedCode = typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null;
+      const storedRole = typeof window !== 'undefined' ? localStorage.getItem('sessionRole') : null;
+      if (!storedCode && !storedRole) return;
+      const s = ensureSocket();
+      if (!s) return;
+      // If we were a listener previously, re-join the session automatically
+      if (storedRole === 'listener' && storedCode) {
+        try { s.emit('join_session', { code: storedCode }); } catch (e) { console.warn('rejoin failed', e); }
+      }
+      // If previously a producer, re-create a session (server will generate a fresh code)
+      if (storedRole === 'producer') {
+        try { s.emit('create_session'); } catch (e) { console.warn('recreate session failed', e); }
+      }
+  } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Emit breath samples to socket for listeners
   const emitToSocket = (payload) => {
     const s = socketRef.current || ensureSocket();
@@ -120,7 +140,7 @@ function Breaths() {
       s.on('connect', () => console.debug('socket connected', s.id));
       s.on('disconnect', () => console.debug('socket disconnected'));
       s.on('session_created', ({ code }) => {
-        try { localStorage.setItem('sessionCode', code); } catch (e) { console.warn('localStorage set failed', e); }
+        try { localStorage.setItem('sessionCode', code); localStorage.setItem('sessionRole', 'producer'); } catch (e) { console.warn('localStorage set failed', e); }
         setShareCode(code);
         setSessionInfo((p) => ({ ...p, code, role: 'producer' }));
         window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
@@ -130,7 +150,8 @@ function Breaths() {
   s.on('join_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Failed to join session', 'error'); });
   s.on('session_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Session error', 'error'); });
       s.on('joined', ({ code }) => {
-  setSessionInfo((p) => ({ ...p, code, role: 'listener' }));
+        try { localStorage.setItem('sessionCode', code); localStorage.setItem('sessionRole', 'listener'); } catch (e) { console.warn('localStorage set failed', e); }
+        setSessionInfo((p) => ({ ...p, code, role: 'listener' }));
         window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1, streaming: false } }));
         setJoining(false);
         if (typeof notify === 'function') notify(`Joined session ${code}`, 'success');
@@ -151,8 +172,8 @@ function Breaths() {
       });
       s.on('session_ended', ({ code }) => {
         window.dispatchEvent(new CustomEvent('session:ended', { detail: { code } }));
-        try { localStorage.removeItem('sessionCode'); } catch (e) { console.warn('localStorage remove failed', e); }
-  setSessionInfo({ code: null, listeners: 0, role: null });
+        try { localStorage.removeItem('sessionCode'); localStorage.removeItem('sessionRole'); } catch (e) { console.warn('localStorage remove failed', e); }
+        setSessionInfo({ code: null, listeners: 0, role: null });
       });
       return s;
     } catch (e) {
@@ -438,17 +459,15 @@ function Breaths() {
                     <div className="text-sm text-gray-600 mb-2">Join a session</div>
                     <div className="flex gap-2 mb-3">
                       <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Enter code" className="w-full border rounded px-3 py-2" />
-                      <button className="btn btn-primary" onClick={async () => {
+                        <button className="btn btn-primary" onClick={async () => {
                         const code = (joinCode || '').trim().toUpperCase();
                         if (!code) { notify('Please enter a code to join', 'error'); return; }
                         setJoining(true);
                         try {
-                          // In a real implementation we'd call the backend to join; here we simulate success
-                          await new Promise((r) => setTimeout(r, 700));
-                          notify(`Joined session ${code}`, 'success');
-                          // mark joined locally and inform listeners
-                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
+                          const s = ensureSocket();
+                          if (!s) throw new Error('Socket not available');
+                          s.emit('join_session', { code });
+                          // socket 'joined' handler will update local state and notify
                           setShowShareModal(false);
                           setJoinCode('');
                         } catch {
