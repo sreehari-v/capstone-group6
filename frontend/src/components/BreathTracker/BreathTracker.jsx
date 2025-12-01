@@ -5,6 +5,8 @@ import { io as ioClient } from "socket.io-client";
 export default function BreathTracker({
   active = false,
   onError,
+  onStop,
+  onSave,
   resetSignal = 0,
   sensitivity = 3,
 }) {
@@ -37,14 +39,15 @@ export default function BreathTracker({
   const socketRef = useRef(null);
   const sessionCodeRef = useRef(null);
   const isProducerRef = useRef(false);
+  const startedAtRef = useRef(null);
   // expose minimal UI state for later wiring (silence unused-variable lint)
   const [__unused_remoteMode, __unused_setRemoteMode] = useState(false);
   const [__unused_connectedCode, __unused_setConnectedCode] = useState(null);
   const [__unused_listenersCount, __unused_setListenersCount] = useState(0);
   const [__unused_producerId, __unused_setProducerId] = useState(null);
   const broadcastRef = useRef(null);
-  const [joinCode, setJoinCode] = useState("");
-  const [joinPending, setJoinPending] = useState(false);
+  const [_joinCode, _setJoinCode] = useState("");
+  const [_joinPending, _setJoinPending] = useState(false);
   const joinTimeoutRef = useRef(null);
   const incomingBufferRef = useRef([]); // buffer incoming breath_data on listeners
 
@@ -200,6 +203,13 @@ export default function BreathTracker({
         sessionCodeRef.current = code;
         isProducerRef.current = true;
         setStatus(`Sharing live data — code ${code}`);
+        try {
+          // persist for Overview card and notify other parts of the UI
+          localStorage.setItem("sessionCode", code || "");
+  } catch (err) { /* ignore */ void err; }
+        try {
+          window.dispatchEvent(new CustomEvent("session:updated", { detail: { code, role: "producer" } }));
+  } catch (err) { /* ignore */ void err; }
       });
 
       // Listener joined a session
@@ -209,7 +219,7 @@ export default function BreathTracker({
         isProducerRef.current = false;
         isListeningRef.current = true;
         setStatus(`Connected to ${code} — showing remote data`);
-        setJoinPending(false);
+        _setJoinPending(false);
 
         if (joinTimeoutRef.current) {
           clearTimeout(joinTimeoutRef.current);
@@ -219,11 +229,18 @@ export default function BreathTracker({
         console.debug("BreathTracker: joined session", { code, producerId });
         // REQUEST SNAPSHOT: send producer's socketId, not code
         socketRef.current.emit("request_snapshot", { to: producerId });
+        try {
+          // notify UI that this client joined a session (useful for dashboards)
+          localStorage.setItem("sessionCode", code || "");
+  } catch (err) { /* ignore */ void err; }
+        try {
+          window.dispatchEvent(new CustomEvent("session:updated", { detail: { code, producerId, role: "listener" } }));
+  } catch (err) { /* ignore */ void err; }
       });
 
       socketRef.current.on("join_error", ({ message }) => {
         isListeningRef.current = false;
-        setJoinPending(false);
+        _setJoinPending(false);
         if (joinTimeoutRef.current) {
           clearTimeout(joinTimeoutRef.current);
           joinTimeoutRef.current = null;
@@ -237,6 +254,12 @@ export default function BreathTracker({
         isListeningRef.current = false;
         sessionCodeRef.current = null;
         setStatus("Remote session ended");
+        try {
+          localStorage.removeItem("sessionCode");
+  } catch (err) { /* ignore */ void err; }
+        try {
+          window.dispatchEvent(new CustomEvent("session:updated", { detail: { code: null } }));
+  } catch (err) { /* ignore */ void err; }
       });
 
       // ------------------- MAIN DATA RECEIVER -------------------
@@ -332,23 +355,23 @@ export default function BreathTracker({
     };
   }, []);
 
-  const createSession = () => {
+  const _createSession = () => {
     if (!socketRef.current) return setStatus("WebSocket not connected");
     socketRef.current.emit("create_session");
   };
 
-  const joinSession = () => {
+  const _joinSession = () => {
     if (!socketRef.current) return setStatus("WebSocket not connected");
-    if (!joinCode || !/^[0-9]{6}$/.test(joinCode))
+    if (!_joinCode || !/^[0-9]{6}$/.test(_joinCode))
       return setStatus("Enter a valid 6-digit code to join");
-    setJoinPending(true);
+    _setJoinPending(true);
     setStatus("Joining session...");
-    socketRef.current.emit("join_session", { code: joinCode });
+    socketRef.current.emit("join_session", { code: _joinCode });
     // fallback: if no response in 6s, clear pending and show message
     if (joinTimeoutRef.current) clearTimeout(joinTimeoutRef.current);
     joinTimeoutRef.current = setTimeout(() => {
       // timeout: still pending
-      setJoinPending(false);
+      _setJoinPending(false);
       setStatus("Join timed out — please try again");
       joinTimeoutRef.current = null;
     }, 6000);
@@ -369,6 +392,7 @@ export default function BreathTracker({
   };
 
   const start = async () => {
+    console.debug("BreathTracker.start called");
     setStatus("Requesting sensor permission...");
     console.debug(
       "BreathTracker: start() called, active sensor check starting"
@@ -392,6 +416,7 @@ export default function BreathTracker({
         typeof DeviceMotionEvent.requestPermission === "function"
       ) {
         const resp = await DeviceMotionEvent.requestPermission();
+        console.debug("BreathTracker: DeviceMotionEvent.requestPermission ->", resp);
         if (resp !== "granted") {
           const msg = "Permission denied for motion sensors";
           setStatus(msg);
@@ -401,10 +426,12 @@ export default function BreathTracker({
         }
       }
     } catch {
-      // ignore
+      console.debug("BreathTracker: DeviceMotion permission request threw — continuing and attempting to listen");
     }
 
-    setStatus("Listening for chest motion — keep phone on your chest");
+  // Do not mark session start until the first motion event arrives.
+  // startedAtRef will be set on the first devicemotion event to avoid
+  // creating empty sessions on devices without motion sensors.
 
     // Signal processing & detection params tuned for small chest motion
     const gravityAlpha = 0.98; // slow low-pass to estimate gravity
@@ -419,6 +446,20 @@ export default function BreathTracker({
       if (startupTimerRef.current) {
         clearTimeout(startupTimerRef.current);
         startupTimerRef.current = null;
+      }
+      // mark as listening
+      if (!isListeningRef.current) {
+        isListeningRef.current = true;
+        console.debug("BreathTracker: devicemotion handler received first event — listening");
+      }
+
+      // Set startedAt on the first actual motion event so we only create
+      // sessions when real sensor data arrived. This prevents an empty
+      // session being saved when running on laptops without motion sensors.
+      if (!startedAtRef.current) {
+        startedAtRef.current = new Date();
+        setStatus("Listening for chest motion — keep phone on your chest");
+        console.debug("BreathTracker: startedAt set on first event ->", startedAtRef.current);
       }
 
       const t = Date.now();
@@ -613,6 +654,15 @@ export default function BreathTracker({
 
   const stop = () => {
     setStatus("Stopped");
+
+    // notify parent that we've stopped
+    try {
+      if (typeof onStop === "function") onStop();
+  } catch (e) { console.debug('BreathTracker onStop callback error', e); }
+
+    const endedAt = new Date();
+    const startedAt = startedAtRef.current; // do NOT default to endedAt here — we want to know if a real session started
+
     if (listenerRef.current?.handler) {
       window.removeEventListener(
         "devicemotion",
@@ -639,14 +689,58 @@ export default function BreathTracker({
     } catch {
       // ignore
     }
+
+    // Prepare session summary and call onSave if provided — only when a real session was started
+    try {
+      const samplesArr = pointsRef.current || [];
+  const durationSeconds = startedAt ? Math.max(0, Math.round((endedAt - startedAt) / 1000)) : 0;
+
+  // Accept any session where start() was actually called (startedAt set).
+  // This allows immediate Stop->Save flows while still preventing saves when
+  // the component unmounts without start() ever being invoked (e.g., page refresh).
+  const hasMeaningfulData = Boolean(startedAt);
+
+      if (hasMeaningfulData) {
+        const samples = samplesArr.map((p) => ({ t: new Date(p.x || Date.now()), inhale: undefined, exhale: undefined, rr: bpmRef.current || undefined }));
+        const session = {
+          startedAt: startedAt.toISOString(),
+          endedAt: endedAt.toISOString(),
+          durationSeconds,
+          avgRespiratoryRate: Math.round(bpmRef.current || 0),
+          samples,
+        };
+        if (typeof onSave === "function") {
+          try {
+            console.debug('BreathTracker: invoking onSave with session', session);
+            onSave(session);
+          } catch (e) {
+            console.warn("onSave handler failed", e);
+          }
+        }
+      }
+
+      // clear start marker so refresh/unmount won't trigger duplicate saves
+      startedAtRef.current = null;
+    } catch (e) {
+      console.warn("Failed to prepare session payload", e);
+    }
   };
 
   useEffect(() => {
     // Start or stop listening based on parent `active` prop.
     // DO NOT clear the collected data when pausing — parent Reset triggers clear via resetSignal.
-    if (active) start();
-    else stop();
-    return () => stop();
+    console.debug("BreathTracker: active changed ->", active);
+    if (active) {
+      console.debug("BreathTracker: calling start() because active=true");
+      start();
+    } else {
+      console.debug("BreathTracker: calling stop() because active=false");
+      stop();
+    }
+    return () => {
+      console.debug("BreathTracker: cleanup effect called — stopping");
+      stop();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
@@ -722,41 +816,7 @@ export default function BreathTracker({
   return (
     <div className="w-full">
       <div className="mb-2 text-sm text-gray-600">{status}</div>
-      <div className="flex items-center justify-center gap-2 mt-2">
-        <button
-          onClick={createSession}
-          className="px-3 py-1 bg-primary text-white rounded-md text-sm"
-        >
-          Share live
-        </button>
-        <input
-          value={joinCode}
-          onChange={(e) => setJoinCode(e.target.value)}
-          placeholder="123456"
-          className="w-28 text-center px-2 py-1 border rounded-md text-sm"
-        />
-        <button
-          onClick={joinSession}
-          disabled={joinPending}
-          className={`px-3 py-1 text-white rounded-md text-sm ${
-            joinPending
-              ? "bg-slate-400 cursor-not-allowed"
-              : "bg-slate-700 hover:bg-slate-600"
-          }`}
-        >
-          {joinPending ? (
-            <span className="inline-flex items-center justify-center">
-              <span
-                aria-hidden="true"
-                className="inline-block rounded-full animate-spin"
-                style={{ width: 16, height: 16, borderWidth: 3, borderColor: 'rgba(255,255,255,0.35)', borderTopColor: '#ffffff' }}
-              />
-            </span>
-          ) : (
-            "Join"
-          )}
-        </button>
-      </div>
+      {/* Share / join controls removed - handled in the parent page's Share modal */}
       <div className="mt-4 grid grid-cols-1 gap-4">
         <div>
           <div className="grid grid-cols-4 gap-2 text-center">
