@@ -61,6 +61,7 @@ function Breaths() {
     if (!s || s.disconnected) return;
     try {
       const code = sessionInfo && sessionInfo.code ? sessionInfo.code : (typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null);
+      if (!code) console.warn('emitToSocket: no session code available, breath_data will be ignored by server', payload);
       const enriched = {
         code,
         samples: Array.isArray(payload) ? payload : [payload],
@@ -72,6 +73,7 @@ function Breaths() {
       if (typeof payload.breathIn === 'number') enriched.breathIn = payload.breathIn;
       if (typeof payload.breathOut === 'number') enriched.breathOut = payload.breathOut;
       if (typeof payload.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = payload.avgRespiratoryRate;
+      console.debug('emitToSocket -> emitting breath_data', { code: enriched.code, samples: enriched.samples.length });
       s.emit('breath_data', enriched);
     } catch (e) { console.warn('emit failed', e); }
   };
@@ -138,9 +140,11 @@ function Breaths() {
       socketRef.current = s;
       // common socket handlers
       s.on('connect', () => console.debug('socket connected', s.id));
+      s.on('connect_error', (err) => console.debug('socket connect_error', err));
       s.on('disconnect', () => console.debug('socket disconnected'));
       s.on('session_created', ({ code }) => {
         try { localStorage.setItem('sessionCode', code); localStorage.setItem('sessionRole', 'producer'); } catch (e) { console.warn('localStorage set failed', e); }
+        console.debug('socket session_created -> code', code);
         setShareCode(code);
         setSessionInfo((p) => ({ ...p, code, role: 'producer' }));
         window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
@@ -164,6 +168,7 @@ function Breaths() {
         setSessionInfo((prev) => ({ ...prev, listeners: Math.max(0, (prev.listeners || 1) - 1) }));
       });
       s.on('breath_data', (payload) => {
+        console.debug('socket received breath_data:', payload && (payload.code ? `[code ${payload.code}]` : '[no-code]'), payload && (payload.samples ? payload.samples.length + ' samples' : 'no samples'));
         // forward to window so BreathTracker (listener) can receive without prop wiring
         window.dispatchEvent(new CustomEvent('socket:breath_data', { detail: payload }));
       });
