@@ -21,6 +21,10 @@ export const createBreathSession = async (req, res) => {
       avgRespiratoryRate,
       samples,
       notes,
+      breathIn,
+      breathOut,
+      totalBreaths,
+      cycleTimestamps,
     } = req.body || {};
 
     if (!startedAt || !endedAt) return res.status(400).json({ message: "startedAt and endedAt are required" });
@@ -31,7 +35,26 @@ export const createBreathSession = async (req, res) => {
       endedAt: new Date(endedAt),
       durationSeconds: durationSeconds ? Number(durationSeconds) : Math.max(0, (new Date(endedAt) - new Date(startedAt)) / 1000),
       avgRespiratoryRate: avgRespiratoryRate ? Number(avgRespiratoryRate) : 0,
-      samples: Array.isArray(samples) ? samples.map((p) => ({ t: p.t ? new Date(p.t) : new Date(), inhale: p.inhale, exhale: p.exhale, rr: p.rr })) : [],
+      breathIn: breathIn ? Number(breathIn) : 0,
+      breathOut: breathOut ? Number(breathOut) : 0,
+      totalBreaths: totalBreaths ? Number(totalBreaths) : 0,
+      cycleTimestamps: Array.isArray(cycleTimestamps) ? cycleTimestamps.map((t) => new Date(t)) : [],
+      samples: Array.isArray(samples)
+        ? samples.map((p) => {
+            const t = p.t ? new Date(p.t) : new Date();
+            // sensor value may be in different keys
+            const val = p.v ?? p.y ?? p.value ?? null;
+            let inhale = undefined;
+            let exhale = undefined;
+            if (typeof val === 'number') {
+              if (val > 0) inhale = Number(val);
+              else if (val < 0) exhale = Math.abs(Number(val));
+            } else if (typeof p.inhale === 'number' || typeof p.exhale === 'number') {
+              inhale = p.inhale; exhale = p.exhale;
+            }
+            return { t, inhale, exhale, rr: p.rr };
+          })
+        : [],
       notes: typeof notes === 'string' ? notes : undefined,
     });
 

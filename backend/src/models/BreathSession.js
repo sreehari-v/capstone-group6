@@ -18,6 +18,12 @@ const breathSessionSchema = new mongoose.Schema(
     // Aggregates
     durationSeconds: { type: Number, default: 0, min: 0 },
     avgRespiratoryRate: { type: Number, default: 0, min: 0 },
+  // Per-session counted breaths
+  breathIn: { type: Number, default: 0, min: 0 },
+  breathOut: { type: Number, default: 0, min: 0 },
+  totalBreaths: { type: Number, default: 0, min: 0 },
+  // Optional cycle timestamps (useful for analysis). Stored as Date values.
+  cycleTimestamps: { type: [Date], default: [] },
     // Client-provided session bounds
     startedAt: { type: Date, required: true },
     endedAt: { type: Date, required: true },
