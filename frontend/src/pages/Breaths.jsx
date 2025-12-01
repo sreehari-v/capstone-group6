@@ -101,13 +101,16 @@ function Breaths() {
       );
 
       //
-      // ─────────────────────────────────────────────
-      //  SESSION EVENTS
-      // ─────────────────────────────────────────────
+      // SESSION EVENTS
       //
       s.on("session_created", ({ code }) => {
-        localStorage.setItem("sessionCode", code);
-        localStorage.setItem("sessionRole", "producer");
+        try {
+          localStorage.setItem("sessionCode", code);
+          localStorage.setItem("sessionRole", "producer");
+        } catch (e) {
+          console.warn("localStorage set failed", e);
+        }
+
         setSessionInfo({
           code,
           role: "producer",
@@ -118,7 +121,7 @@ function Breaths() {
         setShowShareModal(true);
         notify(`Session created: ${code}`, "success");
 
-        // flush buffer
+        // flush buffered samples
         if (sampleBufferRef.current.length) {
           s.emit("breath_data", {
             code,
@@ -129,8 +132,13 @@ function Breaths() {
       });
 
       s.on("joined", ({ code }) => {
-        localStorage.setItem("sessionCode", code);
-        localStorage.setItem("sessionRole", "listener");
+        try {
+          localStorage.setItem("sessionCode", code);
+          localStorage.setItem("sessionRole", "listener");
+        } catch (e) {
+          console.warn("localStorage set failed", e);
+        }
+
         setSessionInfo({
           code,
           role: "listener",
@@ -141,9 +149,10 @@ function Breaths() {
         setJoining(false);
       });
 
-      s.on("join_error", (err) =>
-        notify(err?.message || "Failed to join", "error")
-      );
+      s.on("join_error", (err) => {
+        notify(err?.message || "Failed to join", "error");
+        setJoining(false);
+      });
 
       s.on("listener_joined", () => {
         setSessionInfo((prev) => ({
@@ -160,9 +169,7 @@ function Breaths() {
       });
 
       //
-      // ─────────────────────────────────────────────
-      //  STREAM DATA EVENTS
-      // ─────────────────────────────────────────────
+      // STREAM DATA EVENTS
       //
       s.on("breath_data", (payload) => {
         window.dispatchEvent(
@@ -181,8 +188,13 @@ function Breaths() {
       });
 
       s.on("session_ended", () => {
-        localStorage.removeItem("sessionCode");
-        localStorage.removeItem("sessionRole");
+        try {
+          localStorage.removeItem("sessionCode");
+          localStorage.removeItem("sessionRole");
+        } catch (e) {
+          console.warn("localStorage remove failed", e);
+        }
+
         setSessionInfo({
           code: null,
           role: null,
@@ -209,11 +221,12 @@ function Breaths() {
 
     const code =
       sessionInfo.code ||
-      localStorage.getItem("sessionCode") ||
-      null;
+      (typeof window !== "undefined"
+        ? localStorage.getItem("sessionCode")
+        : null);
 
     if (!code) {
-      // buffer samples until code exists
+      // buffer samples until a code exists
       const arr = Array.isArray(payload)
         ? payload.slice()
         : [payload];
@@ -241,6 +254,8 @@ function Breaths() {
         withCredentials: true,
       });
       if (r?.data?.sessions) setSessions(r.data.sessions);
+    } catch (err) {
+      console.debug("Failed to load sessions", err);
     } finally {
       setLoadingSessions(false);
     }
@@ -286,12 +301,8 @@ function Breaths() {
       now.getMonth(),
       now.getDate()
     );
-    const weekAgo = new Date(
-      now.getTime() - 7 * 86400000
-    );
-    const monthAgo = new Date(
-      now.getTime() - 30 * 86400000
-    );
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
+    const monthAgo = new Date(now.getTime() - 30 * 86400000);
 
     const sum = {
       today: { count: 0, avgBpm: 0, avgDur: 0 },
@@ -305,7 +316,7 @@ function Breaths() {
       sum[key].avgDur += dur;
     };
 
-    items.forEach((s) => {
+    (items || []).forEach((s) => {
       const st = s.startedAt ? new Date(s.startedAt) : null;
       if (!st) return;
       const dur = Number(s.durationSeconds || 0);
@@ -316,15 +327,10 @@ function Breaths() {
       if (st >= monthAgo) bucket("month", bpm, dur);
     });
 
-    // finalize averages
     Object.keys(sum).forEach((k) => {
       if (sum[k].count > 0) {
-        sum[k].avgBpm = Math.round(
-          sum[k].avgBpm / sum[k].count
-        );
-        sum[k].avgDur = Math.round(
-          sum[k].avgDur / sum[k].count
-        );
+        sum[k].avgBpm = Math.round(sum[k].avgBpm / sum[k].count);
+        sum[k].avgDur = Math.round(sum[k].avgDur / sum[k].count);
       }
     });
 
@@ -337,9 +343,7 @@ function Breaths() {
     if (!sessions.length) return null;
     if (savedSessionId)
       return (
-        sessions.find(
-          (s) => s._id === savedSessionId
-        ) || sessions[0]
+        sessions.find((s) => s._id === savedSessionId) || sessions[0]
       );
     return sessions[0];
   }, [sessions, savedSessionId]);
@@ -448,10 +452,6 @@ function Breaths() {
           shouldSave={saveRequested}
           onSaved={() => setSaveRequested(false)}
           onStop={() => setTrackingStarted(false)}
-          onError={(err) => {
-            setSensorError(err);
-            setTrackingStarted(false);
-          }}
           onSample={emitToSocket}
           onSave={async (session) => {
             try {
@@ -549,8 +549,8 @@ function Breaths() {
             </>
           ) : (
             <p className="text-sm text-gray-500">
-              No motion sensor detected.  
-              This device can only **join** sessions.
+              No motion sensor detected. This device can only{" "}
+              <b>join</b> sessions.
             </p>
           )}
         </div>
@@ -606,7 +606,7 @@ function Breaths() {
 
           {isConnected ? (
             <div className="p-3 bg-slate-50 dark:bg-[#0d1b2a] rounded text-sm">
-              <div className="">Code: {sessionInfo.code}</div>
+              <div>Code: {sessionInfo.code}</div>
               <div className="text-xs text-gray-500">
                 Role: {sessionInfo.role}
               </div>
@@ -630,7 +630,9 @@ function Breaths() {
             rounded-xl p-4 shadow-sm
           "
         >
-          <h3 className="font-semibold mb-3">Last Session</h3>
+          <h3 className="font-semibold mb-3">
+            Last Session
+          </h3>
 
           {!lastSession ? (
             <p className="text-sm text-gray-500">
