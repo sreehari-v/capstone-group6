@@ -75,16 +75,25 @@ function Breaths() {
       }
       const enriched = {
         code,
-        samples: Array.isArray(payload) ? payload : [payload],
+        samples: [],
         breathIn: undefined,
         breathOut: undefined,
         avgRespiratoryRate: undefined,
       };
+      // only include true waveform samples (have t/x and v/y/value). Summary-only
+      // payloads should not be included in samples to avoid inserting zeros into
+      // the chart on listeners.
+      try {
+        const makeIsSample = (s) => s && (typeof s.t === 'number' || typeof s.x === 'number' || typeof s.v === 'number' || typeof s.y === 'number' || typeof s.value === 'number');
+        if (Array.isArray(payload)) enriched.samples = payload.filter(makeIsSample).slice(-1000);
+        else if (makeIsSample(payload)) enriched.samples = [payload];
+        else enriched.samples = [];
+  } catch { enriched.samples = []; }
       // include optional summary fields if present on payload
-      if (typeof payload.breathIn === 'number') enriched.breathIn = payload.breathIn;
-      if (typeof payload.breathOut === 'number') enriched.breathOut = payload.breathOut;
-      if (typeof payload.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = payload.avgRespiratoryRate;
-      console.debug('emitToSocket -> emitting breath_data', { code: enriched.code, samples: enriched.samples.length });
+  if (typeof payload.breathIn === 'number') enriched.breathIn = payload.breathIn;
+  if (typeof payload.breathOut === 'number') enriched.breathOut = payload.breathOut;
+  if (typeof payload.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = payload.avgRespiratoryRate;
+  console.debug('emitToSocket -> emitting breath_data', { code: enriched.code, samples: enriched.samples.length, breathIn: enriched.breathIn, breathOut: enriched.breathOut, avg: enriched.avgRespiratoryRate });
       s.emit('breath_data', enriched);
     } catch (e) { console.warn('emit failed', e); }
   };
@@ -166,7 +175,13 @@ function Breaths() {
           const buf = sampleBufferRef.current || [];
           if (buf.length) {
             console.debug('Flushing buffered samples after session_created', buf.length);
+            // try to attach last known summary fields if present in buffered samples
+            const last = buf[buf.length - 1] || {};
             const enriched = { code, samples: buf.slice() };
+            if (typeof last.breathIn === 'number') enriched.breathIn = last.breathIn;
+            if (typeof last.breathOut === 'number') enriched.breathOut = last.breathOut;
+            if (typeof last.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = last.avgRespiratoryRate;
+            try { console.debug('Flushing enriched summary', { code: enriched.code, samples: enriched.samples.length, breathIn: enriched.breathIn, breathOut: enriched.breathOut, avg: enriched.avgRespiratoryRate }); } catch (err) { console.warn('flush log failed', err); }
             try { s.emit('breath_data', enriched); } catch (e) { console.warn('flush emit failed', e); }
             sampleBufferRef.current = [];
           }
