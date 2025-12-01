@@ -165,13 +165,22 @@ export default function BreathTracker({
       }
 
       const endedAt = new Date();
-      const durationSeconds = startedAt ? Math.max(0, Math.round((endedAt - startedAt) / 1000)) : 0;
+      const durationMs = startedAt ? Math.max(0, endedAt - startedAt) : 0;
+      const durationSeconds = +(durationMs / 1000).toFixed(3);
+
+      // Build the session payload with collected data. Include sample points so the
+      // backend stores the waveform if available. Each sample has { x: timestamp, y: value }.
       const session = {
         startedAt: startedAt ? startedAt.toISOString() : new Date().toISOString(),
         endedAt: endedAt.toISOString(),
         durationSeconds,
         avgRespiratoryRate: bpm || 0,
-        samples: [], // sensors removed — no samples
+        breathIn: breathIn || 0,
+        breathOut: breathOut || 0,
+        totalBreaths: total || 0,
+        samples: (pointsRef.current || []).map((p) => ({ t: p.x, v: p.y })),
+        // include cycle timestamps (ms) for advanced analysis if available
+        cycleTimestamps: (cycleTimesRef.current || []).slice(),
       };
 
       // Only persist when parent explicitly requests a save. This avoids accidental
