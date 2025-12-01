@@ -129,10 +129,12 @@
 .layout-content-container .table-actions button { min-width: 64px; }
 
 
-/* Make sure cards have consistent spacing between them */
+/* Make sure cards have consistent spacing between them
+   Removed extra top margin to avoid double-spacing and layout shifts.
+   Individual cards already get bottom spacing via the container rules. */
 .layout-content-container .section-card + .section-card,
 .layout-content-container .card + .card {
-  margin-top: 1rem;
+  margin-top: 0; /* keep cards flush; spacing handled by container */
 }
 
 /* Tighten up grid gaps and card spacing */

@@ -19,6 +19,11 @@ const Overview = () => {
   const goal = 10000;
 
   const [breathLast] = useState({ bpm: 16, min: 11, max: 22 });
+  const [sessionInfo, setSessionInfo] = useState(() => ({
+    code: typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null,
+    listeners: 0,
+    role: null,
+  }));
 
   const navigate = useNavigate();
 
@@ -49,32 +54,28 @@ const Overview = () => {
     fetchMeds();
   }, []);
 
-  // Load step summary (daily + weekly + weeklyByDay) from backend
+  // Listen for session updates dispatched by BreathTracker (or other components)
   useEffect(() => {
-    const fetchSteps = async () => {
-      setLoadingSteps(true);
-      try {
-        const res = await axios.get(`${API_BASE}/api/steps/summary`, {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (res?.data) {
-          setStepsToday(res.data.daily?.steps || 0);
-          setWeeklyTotal(res.data.weekly?.steps || 0);
-          setWeeklyByDay(res.data.weeklyByDay || []);
-        }
-      } catch (err) {
-        console.error("Failed to load step summary in Overview", err);
-        // leave defaults as 0
-      } finally {
-        setLoadingSteps(false);
+    const handler = (ev) => {
+      const d = ev && ev.detail ? ev.detail : {};
+      if (d && d.code === null) {
+        setSessionInfo({ code: null, listeners: 0, role: null });
+        return;
       }
+      setSessionInfo((prev) => ({
+        code: d.code || prev.code,
+        role: d.role || prev.role,
+        // If a listeners count is provided, use it; otherwise keep previous or set 1 if a listener joined
+        listeners: typeof d.listenersCount === 'number' ? d.listenersCount : (d.role === 'listener' ? Math.max(1, prev.listeners) : prev.listeners),
+      }));
     };
 
-    fetchSteps();
+    try {
+      window.addEventListener('session:updated', handler);
+    } catch (err) { void err; }
+    return () => {
+      try { window.removeEventListener('session:updated', handler); } catch (err) { void err; }
+    };
   }, []);
 
   const medsToday = useMemo(() => {
@@ -211,11 +212,9 @@ const Overview = () => {
         {/* Active Session */}
         <div className="p-4 bg-white rounded-xl shadow min-w-0">
           <div className="text-sm text-gray-500">Active Session</div>
-          <div className="text-xl font-bold mt-1">Mobile connected</div>
-          <div className="text-sm text-gray-600">
-            Viewer Code: {localStorage.getItem("sessionCode") || "—"}
-          </div>
-          <div className="text-sm text-gray-600">1 device listening</div>
+          <div className="text-xl font-bold mt-1">{sessionInfo.code ? 'Session active' : 'No active session'}</div>
+          <div className="text-sm text-gray-600">Viewer Code: {sessionInfo.code || "—"}</div>
+          <div className="text-sm text-gray-600">{sessionInfo.listeners} device{sessionInfo.listeners === 1 ? '' : 's'} listening</div>
         </div>
       </div>
 

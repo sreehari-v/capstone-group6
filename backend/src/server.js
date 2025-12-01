@@ -13,6 +13,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
 import stepRoutes from "./routes/stepRoutes.js";
+import breathRoutes from "./routes/breathRoutes.js";
 
 dotenv.config();
 
@@ -69,6 +70,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/donations", donationRoutes);
 app.use("/api/steps", stepRoutes);
+app.use("/api/breaths", breathRoutes);
 
 // Serve frontend
 const FRONTEND_DIST = path.join(__dirname, "..", "..", "frontend", "dist");
