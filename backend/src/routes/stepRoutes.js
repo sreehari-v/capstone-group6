@@ -114,11 +114,54 @@ router.get("/summary", protect, async (req, res) => {
       }
     }
 
-    return res.json({ daily, weekly, monthly });
+    // ---- New: per-day buckets for the last 7 days ----
+    // Build 7 days: from 6 days ago up to today
+    const dayBuckets = [];
+    const indexByKey = new Map();
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10); // YYYY-MM-DD
+
+      dayBuckets.push({
+        key,
+        date: d,
+        steps: 0,
+        distanceKm: 0,
+        kcal: 0,
+      });
+      indexByKey.set(key, dayBuckets.length - 1);
+    }
+
+    // Fill buckets using sessions within last 7 days
+    for (const s of sessions) {
+      const t = new Date(s.createdAt);
+      if (t < weekAgo) continue;
+
+      const key = t.toISOString().slice(0, 10);
+      const idx = indexByKey.get(key);
+      if (idx === undefined) continue;
+
+      const bucket = dayBuckets[idx];
+      bucket.steps += s.steps || 0;
+      bucket.distanceKm += s.distanceKm || 0;
+      bucket.kcal += s.kcal || 0;
+    }
+
+    const weeklyByDay = dayBuckets.map((d) => ({
+      date: d.date.toISOString(),
+      steps: d.steps,
+      distanceKm: d.distanceKm,
+      kcal: d.kcal,
+    }));
+
+    return res.json({ daily, weekly, monthly, weeklyByDay });
   } catch (err) {
     console.error("Error getting step summary:", err);
     return res.status(500).json({ message: "Failed to load step summary" });
   }
 });
+
 
 export default router;
