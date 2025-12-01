@@ -107,7 +107,13 @@ export default function BreathTracker({
           const p = { x: t, y: Number(filtered.toFixed(4)) };
           pointsRef.current = pointsRef.current.concat(p).slice(-400);
           setPoints(pointsRef.current.slice());
-          try { if (typeof onSample === 'function') onSample({ t: p.x, v: p.y, value: p.y }); } catch { /* ignore */ }
+          try {
+            if (typeof onSample === 'function') {
+              // log sample emission for debugging
+              try { console.debug('BreathTracker onSample ->', { t: p.x, v: p.y }); } catch (e) { console.warn('log failed', e); }
+              onSample({ t: p.x, v: p.y, value: p.y });
+            }
+          } catch (err) { console.warn('onSample callback failed', err); }
           lastEventTime = t;
         }
 
