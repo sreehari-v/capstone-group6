@@ -12,6 +12,8 @@ export default function BreathTracker({
   onSaved = () => {},
   // sensitivity slider value from parent (1..5). Higher means more sensitive (detect smaller motion)
   sensitivity = 3,
+  // optional callback invoked for each new sample { x, y }
+  onSample = null,
 }) {
   // Simplified tracker: no sensors, no sockets. Keep UI only.
   const [status, setStatus] = useState("Idle — press Start to begin");
@@ -105,6 +107,7 @@ export default function BreathTracker({
           const p = { x: t, y: Number(filtered.toFixed(4)) };
           pointsRef.current = pointsRef.current.concat(p).slice(-400);
           setPoints(pointsRef.current.slice());
+          try { if (typeof onSample === 'function') onSample({ t: p.x, v: p.y, value: p.y }); } catch { /* ignore */ }
           lastEventTime = t;
         }
 
@@ -242,6 +245,34 @@ export default function BreathTracker({
     setBpm(0);
     setStartedAt(null);
   }, [resetSignal]);
+
+  // Listen for incoming socket data when acting as a listener. The backend forwards
+  // 'breath_data' payloads which may contain samples and summary fields.
+  useEffect(() => {
+    const handler = (ev) => {
+      const payload = ev && ev.detail ? ev.detail : ev;
+      if (!payload) return;
+      const samples = Array.isArray(payload.samples) ? payload.samples : (Array.isArray(payload) ? payload : (payload.t ? [payload] : []));
+      if (samples.length) {
+        try {
+          const mapped = samples.map((s) => ({ x: s.t || s.x, y: Number((s.v ?? s.y ?? s.value ?? 0).toFixed ? (s.v ?? s.y ?? s.value ?? 0) : Number(s.v ?? s.y ?? s.value ?? 0)) }));
+          pointsRef.current = pointsRef.current.concat(mapped).slice(-400);
+          setPoints(pointsRef.current.slice());
+        } catch {
+          /* ignore malformed samples */
+        }
+      }
+      if (typeof payload.breathIn === 'number') setBreathIn(payload.breathIn);
+      if (typeof payload.breathOut === 'number') setBreathOut(payload.breathOut);
+      if (typeof payload.avgRespiratoryRate === 'number') setBpm(Math.round(payload.avgRespiratoryRate));
+    };
+    try { window.addEventListener('socket:breath_data', handler); } catch { /* ignore */ }
+    try { window.addEventListener('socket:session_snapshot', handler); } catch { /* ignore */ }
+    return () => {
+      try { window.removeEventListener('socket:breath_data', handler); } catch { /* ignore */ }
+      try { window.removeEventListener('socket:session_snapshot', handler); } catch { /* ignore */ }
+    };
+  }, []);
 
   const total = Math.floor((breathIn + breathOut) / 2);
 

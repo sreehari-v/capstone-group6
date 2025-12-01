@@ -1,8 +1,9 @@
-import React, { useState, useContext, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useContext, useCallback, useEffect, useMemo, useRef } from 'react'
 import axios from 'axios'
 import BreathTracker from '../components/BreathTracker/BreathTracker'
 import BreathStartModal from '../components/BreathTracker/BreathStartModal'
 import ToastContext from '../contexts/ToastContext.jsx'
+import { io } from 'socket.io-client'
 
 function Breaths() {
   const [showStartModal, setShowStartModal] = useState(false);
@@ -23,6 +24,7 @@ function Breaths() {
   const [joining, setJoining] = useState(false);
   const [sessionInfo, setSessionInfo] = useState(() => ({ code: typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null, listeners: 0, role: null }));
   const [hasSensor, setHasSensor] = useState(true);
+  const socketRef = useRef(null);
 
   const notify = (message, type = 'info') => {
     try {
@@ -31,6 +33,27 @@ function Breaths() {
     } catch {
       alert(message);
     }
+  };
+
+  // Emit breath samples to socket for listeners
+  const emitToSocket = (payload) => {
+    const s = socketRef.current || ensureSocket();
+    if (!s || s.disconnected) return;
+    try {
+      const code = sessionInfo && sessionInfo.code ? sessionInfo.code : (typeof window !== 'undefined' ? localStorage.getItem('sessionCode') : null);
+      const enriched = {
+        code,
+        samples: Array.isArray(payload) ? payload : [payload],
+        breathIn: undefined,
+        breathOut: undefined,
+        avgRespiratoryRate: undefined,
+      };
+      // include optional summary fields if present on payload
+      if (typeof payload.breathIn === 'number') enriched.breathIn = payload.breathIn;
+      if (typeof payload.breathOut === 'number') enriched.breathOut = payload.breathOut;
+      if (typeof payload.avgRespiratoryRate === 'number') enriched.avgRespiratoryRate = payload.avgRespiratoryRate;
+      s.emit('breath_data', enriched);
+    } catch (e) { console.warn('emit failed', e); }
   };
 
   const API_BASE = import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || 'http://localhost:5000';
@@ -86,6 +109,57 @@ function Breaths() {
     try { window.addEventListener('session:updated', handler); } catch (err) { void err; }
     return () => { try { window.removeEventListener('session:updated', handler); } catch (err) { void err; } };
   }, []);
+
+  // Socket helpers
+  const ensureSocket = () => {
+    if (socketRef.current) return socketRef.current;
+    try {
+      const s = io(API_BASE, { withCredentials: true });
+      socketRef.current = s;
+      // common socket handlers
+      s.on('connect', () => console.debug('socket connected', s.id));
+      s.on('disconnect', () => console.debug('socket disconnected'));
+      s.on('session_created', ({ code }) => {
+        try { localStorage.setItem('sessionCode', code); } catch (e) { console.warn('localStorage set failed', e); }
+        setShareCode(code);
+        setSessionInfo((p) => ({ ...p, code, role: 'producer' }));
+        window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0, streaming: false } }));
+        if (typeof notify === 'function') notify(`Session created: ${code}`, 'success');
+        setShowShareModal(true);
+      });
+  s.on('join_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Failed to join session', 'error'); });
+  s.on('session_error', (err) => { if (typeof notify === 'function') notify(err?.message || 'Session error', 'error'); });
+      s.on('joined', ({ code }) => {
+  setSessionInfo((p) => ({ ...p, code, role: 'listener' }));
+        window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1, streaming: false } }));
+        setJoining(false);
+        if (typeof notify === 'function') notify(`Joined session ${code}`, 'success');
+      });
+      s.on('listener_joined', () => {
+        setSessionInfo((prev) => ({ ...prev, listeners: (prev.listeners || 0) + 1 }));
+        window.dispatchEvent(new CustomEvent('session:updated', { detail: { code: sessionInfo.code, role: 'producer', listenersCount: (sessionInfo.listeners || 0) + 1 } }));
+      });
+      s.on('listener_left', () => {
+        setSessionInfo((prev) => ({ ...prev, listeners: Math.max(0, (prev.listeners || 1) - 1) }));
+      });
+      s.on('breath_data', (payload) => {
+        // forward to window so BreathTracker (listener) can receive without prop wiring
+        window.dispatchEvent(new CustomEvent('socket:breath_data', { detail: payload }));
+      });
+      s.on('session_snapshot', (snapshot) => {
+        window.dispatchEvent(new CustomEvent('socket:session_snapshot', { detail: snapshot }));
+      });
+      s.on('session_ended', ({ code }) => {
+        window.dispatchEvent(new CustomEvent('session:ended', { detail: { code } }));
+        try { localStorage.removeItem('sessionCode'); } catch (e) { console.warn('localStorage remove failed', e); }
+  setSessionInfo({ code: null, listeners: 0, role: null });
+      });
+      return s;
+    } catch (e) {
+      console.warn('socket init failed', e);
+      return null;
+    }
+  };
 
   const computeSummary = (items) => {
     const now = new Date();
@@ -196,6 +270,7 @@ function Breaths() {
                   onSaved={() => setSaveRequested(false)}
                   onStop={() => setTrackingStarted(false)}
                   onError={(err) => { setSensorError(err); setTrackingStarted(false); }}
+                  onSample={emitToSocket}
                   onSave={async (session) => {
                     // Called by BreathTracker only when parent requested a save
                     console.debug('Breaths.onSave received session', session);
@@ -242,11 +317,8 @@ function Breaths() {
                       <div className="text-sm text-gray-600 mb-2">Live sharing</div>
                       <div className="flex gap-2">
                         <button className="btn btn-outline flex-1" onClick={() => {
-                          const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-                          setShareCode(code);
-                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'producer', listenersCount: 0 } }));
-                          setShowShareModal(true);
+                          const s = ensureSocket();
+                          try { s && s.emit('create_session'); } catch (e) { console.warn('create_session emit failed', e); }
                         }}>Create code</button>
 
                         <div className="flex gap-2" style={{ minWidth: 0 }}>
@@ -256,16 +328,16 @@ function Breaths() {
                             if (!code) { notify('Please enter a code to join', 'error'); return; }
                             setJoining(true);
                             try {
-                              // simulate join
-                              await new Promise((r) => setTimeout(r, 500));
-                              notify(`Joined session ${code}`, 'success');
-                              try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                              window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
+                              const s = ensureSocket();
+                              if (!s) throw new Error('Socket not available');
+                              s.emit('join_session', { code });
+                              // we rely on the 'joined' or 'join_error' handlers in ensureSocket to update UI
                               setShowShareModal(false);
                               setJoinCode('');
                             } catch {
                               notify('Failed to join session', 'error');
-                            } finally { setJoining(false); }
+                              setJoining(false);
+                            }
                           }}>{joining ? 'Joining…' : 'Join'}</button>
                         </div>
                       </div>
@@ -273,7 +345,7 @@ function Breaths() {
                   </div>
                 ) : (
                   <div>
-                    <div className="text-sm font-medium mb-2">Join session</div>
+                    <div className="text-sm font-medium">Join session</div>
                     <div className="flex gap-2">
                       <input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="Enter code" className="flex-1 border rounded px-3 py-2" />
                       <button className="btn btn-primary" onClick={async () => {
@@ -281,11 +353,11 @@ function Breaths() {
                         if (!code) { notify('Please enter a code to join', 'error'); return; }
                         setJoining(true);
                         try {
-                          await new Promise((r) => setTimeout(r, 500));
-                          notify(`Joined session ${code}`, 'success');
-                          try { localStorage.setItem('sessionCode', code); } catch { /* ignore */ }
-                          window.dispatchEvent(new CustomEvent('session:updated', { detail: { code, role: 'listener', listenersCount: 1 } }));
-                          setJoinCode('');
+                            const s = ensureSocket();
+                            if (!s) throw new Error('Socket not available');
+                            s.emit('join_session', { code });
+                            // rely on socket handlers to update session state
+                            setJoinCode('');
                         } catch {
                           notify('Failed to join session', 'error');
                         } finally { setJoining(false); }
