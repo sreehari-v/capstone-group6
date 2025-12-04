@@ -12,7 +12,14 @@ const LoginPage = () => {
       >
         <i className="fa-solid fa-xmark"></i>
       </Link>
-      <div className="hidden lg:flex flex-col items-center justify-center w-1/2 bg-gray-50 dark:bg-slate-800 p-12">
+      <div
+        className="hidden lg:flex flex-col items-center justify-center w-1/2 bg-gray-50 dark:bg-slate-800 p-12"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=1200&q=80')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         <div className="max-w-md w-full">
           <Link
             to="/"
