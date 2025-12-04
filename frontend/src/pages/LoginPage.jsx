@@ -15,7 +15,7 @@ const LoginPage = () => {
       <div
         className="hidden lg:flex relative flex-col items-center justify-center w-1/2 bg-gray-50 dark:bg-slate-800 p-12"
         style={{
-          backgroundImage: "url('/images/login-bg-1.png')",
+          backgroundImage: "url('/images/login-bg.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}

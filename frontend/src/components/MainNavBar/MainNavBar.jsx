@@ -7,6 +7,12 @@ const MainNavBar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { user } = useAuth();
+  // Debug: show current user in console to help diagnose stale UI after logout
+  try {
+    if (import.meta.env.DEV) console.debug('MainNavBar render user ->', user);
+  } catch {
+    /* ignore */
+  }
 
   const closeMenu = () => setIsMobileMenuOpen(false);
 

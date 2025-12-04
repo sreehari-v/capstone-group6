@@ -28,6 +28,21 @@ connectDB();
 app.use(express.json());
 app.use(cookieParser());
 
+// Development-only request debugger: logs incoming API requests and cookie keys.
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    try {
+      if (req.path && req.path.startsWith('/api')) {
+        const ck = Object.keys(req.cookies || {});
+        console.debug(`dev-req: ${req.method} ${req.path} -> cookies:`, ck);
+      }
+    } catch (e) {
+      /* ignore */
+    }
+    next();
+  });
+}
+
 // -------------------- CORS --------------------
 // Allow frontend origin(s) and credentials. Support comma-separated FRONTEND_URLS or single FRONTEND_URL.
 const defaultDevOrigin = "http://localhost:5173";

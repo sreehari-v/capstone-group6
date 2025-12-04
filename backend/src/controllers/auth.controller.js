@@ -179,11 +179,48 @@ export const googleCallback = async (req, res) => {
 //  Logout
 // ===========================
 export const logout = (req, res) => {
-    // Clear both access and refresh cookies
-    res.clearCookie("token", { path: "/" });
-    res.clearCookie("refreshToken", { path: "/" });
-    res.clearCookie("csrfToken", { path: "/" });
-    res.json({ message: "Logged out" });
+    // Log incoming cookies for debug purposes (helps diagnose why clearCookie
+    // sometimes doesn't remove cookies when path/sameSite/domain mismatches occur).
+    try {
+        console.debug('logout: incoming cookies ->', Object.keys(req.cookies || {}));
+    } catch (e) {
+        console.warn('logout: failed to read req.cookies', e);
+    }
+
+    // Clear both access and refresh cookies using the same options that were
+    // applied when the cookies were originally set (httpOnly, secure, sameSite).
+    const isProd = process.env.NODE_ENV === "production";
+
+    // Use makeCookieOpts to produce matching options; set maxAge to 0 when clearing
+    res.clearCookie("token", makeCookieOpts(isProd, 0));
+    res.clearCookie("refreshToken", makeCookieOpts(isProd, 0));
+
+    // csrfToken was set as a non-httpOnly cookie earlier — clear with matching options
+    res.clearCookie("csrfToken", {
+        httpOnly: false,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
+        maxAge: 0,
+        path: "/",
+    });
+
+    // As an extra fallback, also explicitly set expired cookies (some browsers
+    // respond better to an explicit past expiration). Use the same options.
+    try {
+        res.cookie("token", "", { ...makeCookieOpts(isProd, 0), expires: new Date(0) });
+        res.cookie("refreshToken", "", { ...makeCookieOpts(isProd, 0), expires: new Date(0) });
+        res.cookie("csrfToken", "", { httpOnly: false, secure: isProd, sameSite: isProd ? "none" : "lax", expires: new Date(0), path: "/" });
+    } catch (e) {
+        // best-effort — don't crash logout if this fails
+        console.debug('logout: explicit expire cookies failed', e?.message || e);
+    }
+
+    // Return a debug hint in non-production to help client-side diagnostics
+    if (process.env.NODE_ENV !== 'production') {
+        return res.json({ message: "Logged out", cookiesReceived: Object.keys(req.cookies || {}) });
+    }
+
+    return res.json({ message: "Logged out" });
 };
 
 // ===========================
@@ -418,20 +455,20 @@ export const login = async (req, res) => {
         const refreshToken = generateRefreshToken(user);
         const isProd = process.env.NODE_ENV === "production";
 
-        // Set access and refresh cookies
-        res.cookie("token", token, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
-        res.cookie("refreshToken", refreshToken, makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000))));
+    // Set access and refresh cookies
+    const tokenOpts = makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000)));
+    const refreshOpts = makeCookieOpts(isProd, parseInt(process.env.JWT_REFRESH_EXPIRES_MS || String(7 * 24 * 60 * 60 * 1000)));
+    console.debug('auth: setting token cookie opts ->', tokenOpts);
+    console.debug('auth: setting refreshToken cookie opts ->', refreshOpts);
+    res.cookie("token", token, tokenOpts);
+    res.cookie("refreshToken", refreshToken, refreshOpts);
 
 
         // Issue a non-httpOnly CSRF token for double-submit protection
         const csrfToken = crypto.randomBytes(24).toString("hex");
-        res.cookie("csrfToken", csrfToken, {
-            httpOnly: false,
-            secure: isProd,
-            sameSite: isProd ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        const csrfOpts = { httpOnly: false, secure: isProd, sameSite: isProd ? "none" : "lax", maxAge: 7 * 24 * 60 * 60 * 1000, path: "/" };
+        console.debug('auth: setting csrfToken cookie opts ->', csrfOpts);
+        res.cookie("csrfToken", csrfToken, csrfOpts);
 
         res.json({ id: user._id, name: user.name, email: user.email, csrfToken });
     } catch (err) {
@@ -458,17 +495,15 @@ export const refresh = async (req, res) => {
 
         const newToken = generateToken(user);
         const isProd = process.env.NODE_ENV === "production";
-        res.cookie("token", newToken, makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000))));
+        const tokenOpts = makeCookieOpts(isProd, parseInt(process.env.JWT_EXPIRES_MS || String(15 * 60 * 1000)));
+        console.debug('auth.refresh: setting token cookie opts ->', tokenOpts);
+        res.cookie("token", newToken, tokenOpts);
 
         // rotate csrf token as well
         const csrfToken = crypto.randomBytes(24).toString("hex");
-        res.cookie("csrfToken", csrfToken, {
-            httpOnly: false,
-            secure: isProd,
-            sameSite: isProd ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            path: "/",
-        });
+        const csrfOpts = { httpOnly: false, secure: isProd, sameSite: isProd ? "none" : "lax", maxAge: 7 * 24 * 60 * 60 * 1000, path: "/" };
+        console.debug('auth.refresh: setting csrfToken cookie opts ->', csrfOpts);
+        res.cookie("csrfToken", csrfToken, csrfOpts);
 
         // Note: refresh-token session tracking removed — keep refresh cookie as-is
 

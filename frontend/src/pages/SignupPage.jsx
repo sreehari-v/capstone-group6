@@ -16,7 +16,7 @@ export default function SignupPage() {
       <div
         className="hidden lg:flex relative flex-col items-center justify-center w-1/2 bg-gray-50 dark:bg-slate-800 p-12"
         style={{
-          backgroundImage: "url('/images/register-bg-3.png')",
+          backgroundImage: "url('/images/register-bg.png')",
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
