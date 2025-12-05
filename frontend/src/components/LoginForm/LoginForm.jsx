@@ -13,7 +13,7 @@ export default function LoginForm() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
 
   const searchParams = new URLSearchParams(location.search);
   const sent = searchParams.get("sent");
@@ -21,6 +21,8 @@ export default function LoginForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError("");
+    setInfoMessage("");
     try {
       await axios.post(
         `${import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000"}/api/auth/login`,
@@ -29,27 +31,36 @@ export default function LoginForm() {
       );
 
       // refresh auth state
-  try { await fetchMe(); } catch { /* ignore */ }
+      try {
+        await fetchMe();
+      } catch {
+        /* ignore */
+      }
 
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || "Login failed");
+      const msg = err.response?.data?.message || "Login failed";
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleResend = async () => {
-    setResendMessage("");
+    setInfoMessage("");
     setIsResending(true);
     try {
       const base = import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
       const resp = await axios.post(`${base}/api/auth/resend-verification`, { email }, { withCredentials: true });
-      setResendMessage(resp.data?.message || "Verification email queued");
+  const msg = resp.data?.message || "Verification email will be sent shortly";
+      setInfoMessage(msg);
+      setTimeout(() => setInfoMessage(""), 8000);
     } catch (err) {
       console.error("Resend error:", err);
-      setResendMessage(err.response?.data?.message || "Failed to resend verification email");
+  const em = err.response?.data?.message || "Failed to resend verification email";
+      setInfoMessage(em);
+      setTimeout(() => setInfoMessage(""), 8000);
     } finally {
       setIsResending(false);
     }
@@ -59,12 +70,29 @@ export default function LoginForm() {
     <div>
       <h2 className="text-3xl font-bold text-center">Welcome Back</h2>
       {sent === "1" && (
-        <p className="text-blue-600 text-center mt-2">
-          Check your email — we sent a verification link. You must verify before
-          logging in.
-        </p>
+        <div className="mx-auto max-w-xl mt-4">
+            <div className="rounded-md bg-green-50 border border-green-100 p-3 text-center text-green-800" role="status" aria-live="polite">
+              Verification email will be sent shortly. You must verify before logging in.
+            </div>
+          </div>
       )}
-      {error && <p className="text-red-500 text-center mt-2">{error}</p>}
+
+      {error && (
+        <div className="mx-auto max-w-xl mt-4">
+          <div className="rounded-md bg-red-50 border border-red-100 p-3 text-center text-red-700" role="alert" aria-live="assertive">
+            {error}
+          </div>
+        </div>
+      )}
+
+      {infoMessage && (
+        <div className="mx-auto max-w-xl mt-4">
+          <div className="rounded-md bg-green-50 border border-green-100 p-3 text-center text-green-800" role="status" aria-live="polite">
+            {infoMessage}
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6 mt-4">
         <div>
           <label>Email Address</label>
@@ -107,6 +135,7 @@ export default function LoginForm() {
             "Login"
           )}
         </button>
+
         {/* Show resend option when login fails due to unverified email */}
         {error && error.toLowerCase().includes("verify") && (
           <div className="mt-3 text-center">
@@ -114,11 +143,18 @@ export default function LoginForm() {
               type="button"
               onClick={handleResend}
               disabled={isResending || !email}
-              className="text-md text-primary p-2"
+              className="inline-flex items-center gap-2 text-sm font-medium text-[var(--primary-color)] px-3 py-2 rounded-md border border-[var(--primary-color)] bg-white/10"
             >
-              {isResending ? "Resending..." : "Resend verification email"}
+              {isResending ? (
+                <>
+                  <span className="inline-block w-3 h-3 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  Resending...
+                </>
+              ) : (
+                "Resend verification email"
+              )}
             </button>
-            {resendMessage && <div className="mt-2 text-sm text-green-600">{resendMessage}</div>}
+            {/* single top banner shows resend confirmation; no duplicate below */}
           </div>
         )}
       </form>

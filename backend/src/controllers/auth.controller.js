@@ -369,7 +369,7 @@ export const signup = async (req, res) => {
             });
 
         // Return user summary but don't auto-login until verified
-        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email queued" };
+        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email will be sent shortly" };
         res.status(201).json(responsePayload);
     } catch (err) {
         console.error("Signup error:", err);
@@ -461,7 +461,7 @@ export const resendVerification = async (req, res) => {
                 console.error("Failed to resend verification email:", err);
             });
 
-        return res.json({ message: "Verification email queued" });
+        return res.json({ message: "Verification email will be sent shortly" });
     } catch (err) {
         console.error("Resend verification error:", err);
         return res.status(500).json({ message: "Failed to queue verification email" });
