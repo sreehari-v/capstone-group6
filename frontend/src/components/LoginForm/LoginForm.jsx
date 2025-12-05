@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import OAuth from "../../OAuth";
 import axios from "axios";
@@ -14,6 +14,64 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
+  const [cooldown, setCooldown] = useState(0); // seconds remaining
+  const cooldownTimerRef = useRef(null);
+
+  // Helper key for localStorage per email
+  const cooldownKey = (em) => `resendCooldown:${em}`;
+
+  useEffect(() => {
+    // When email changes, restore any persisted cooldown for that email
+    if (!email) return;
+    try {
+      const raw = localStorage.getItem(cooldownKey(email));
+      if (raw) {
+        const end = Number(raw);
+        const now = Date.now();
+        if (!Number.isNaN(end) && end > now) {
+          setCooldown(Math.ceil((end - now) / 1000));
+        } else {
+          localStorage.removeItem(cooldownKey(email));
+        }
+      }
+    } catch {
+      // ignore localStorage errors
+    }
+  }, [email]);
+
+  useEffect(() => {
+    // Manage interval when cooldown > 0
+    if (cooldownTimerRef.current) {
+      clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+    if (cooldown > 0) {
+      cooldownTimerRef.current = setInterval(() => {
+        setCooldown((c) => {
+            if (c <= 1) {
+            clearInterval(cooldownTimerRef.current);
+            cooldownTimerRef.current = null;
+            try { localStorage.removeItem(cooldownKey(email)); } catch { /* ignore */ }
+            return 0;
+          }
+          return c - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
+  }, [cooldown, email]);
+
+  const startCooldown = (seconds) => {
+    if (!email) return;
+    const end = Date.now() + seconds * 1000;
+  try { localStorage.setItem(cooldownKey(email), String(end)); } catch { /* ignore */ }
+    setCooldown(Math.ceil(seconds));
+  };
 
   const searchParams = new URLSearchParams(location.search);
   const sent = searchParams.get("sent");
@@ -53,13 +111,19 @@ export default function LoginForm() {
     try {
       const base = import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
       const resp = await axios.post(`${base}/api/auth/resend-verification`, { email }, { withCredentials: true });
-  const msg = resp.data?.message || "Verification email will be sent shortly";
+      const msg = resp.data?.message || "Verification email will be sent shortly";
       setInfoMessage(msg);
+      // Server may return nextWait (seconds) to indicate when next resend will be allowed
+      const nextWait = Number(resp.data?.nextWait) || 0;
+      if (nextWait > 0) startCooldown(nextWait);
       setTimeout(() => setInfoMessage(""), 8000);
     } catch (err) {
       console.error("Resend error:", err);
-  const em = err.response?.data?.message || "Failed to resend verification email";
+      const em = err.response?.data?.message || "Failed to resend verification email";
       setInfoMessage(em);
+      // If server returned remaining seconds on 429, use it for cooldown
+      const rem = Number(err.response?.data?.remaining) || 0;
+      if (rem > 0) startCooldown(rem);
       setTimeout(() => setInfoMessage(""), 8000);
     } finally {
       setIsResending(false);
@@ -142,7 +206,7 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={isResending || !email}
+              disabled={isResending || !email || cooldown > 0}
               className="inline-flex items-center gap-2 text-sm font-medium text-[var(--primary-color)] px-3 py-2 rounded-md border border-[var(--primary-color)] bg-white/10"
             >
               {isResending ? (
@@ -150,6 +214,8 @@ export default function LoginForm() {
                   <span className="inline-block w-3 h-3 mr-1 animate-spin rounded-full border-2 border-current border-t-transparent" />
                   Resending...
                 </>
+              ) : cooldown > 0 ? (
+                `Resend available in ${cooldown}s`
               ) : (
                 "Resend verification email"
               )}

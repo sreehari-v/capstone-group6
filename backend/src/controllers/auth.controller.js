@@ -392,6 +392,39 @@ export const resendVerification = async (req, res) => {
 
         if (user.isVerified) return res.status(400).json({ message: "Account already verified" });
 
+        // Server-side resend throttling with exponential backoff.
+        // Base delay in seconds
+        const BASE_DELAY = parseInt(process.env.RESEND_BASE_DELAY_SEC || '30', 10);
+        // Maximum multiplier (to cap delay)
+        const MAX_MULTIPLIER = parseInt(process.env.RESEND_MAX_MULTIPLIER || '6', 10); // up to 32x
+
+        const now = new Date();
+        // Reset multiplier if last resend was long ago (e.g., 24 hours)
+        const RESET_WINDOW_MS = parseInt(process.env.RESEND_RESET_WINDOW_MS || String(24 * 60 * 60 * 1000), 10);
+        let multiplier = user.resendMultiplier || 0;
+        const last = user.lastResendAt || null;
+        if (last && (now - last) > RESET_WINDOW_MS) {
+            multiplier = 0;
+        }
+
+        // Compute current wait required (in seconds)
+        const requiredWait = BASE_DELAY * Math.pow(2, multiplier);
+        if (last) {
+            const elapsed = Math.floor((now - last) / 1000);
+            if (elapsed < requiredWait) {
+                const remaining = requiredWait - elapsed;
+                // Tell client how many seconds remain
+                return res.status(429).json({ message: "Too many requests", remaining });
+            }
+        }
+
+        // Proceed to send and increment multiplier (cap to MAX_MULTIPLIER)
+        multiplier = Math.min(MAX_MULTIPLIER, multiplier + 1);
+        user.resendMultiplier = multiplier;
+        user.lastResendAt = now;
+        // Save throttle state; best-effort — don't block if save fails but try
+        try { await user.save(); } catch (e) { console.warn('resend: failed to persist throttle state', e?.message || e); }
+
         // Generate short-lived verification token
         const verifyToken = jwt.sign({ id: user._id, type: "verify" }, process.env.JWT_SECRET, {
             expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
@@ -429,7 +462,7 @@ export const resendVerification = async (req, res) => {
                                                 <p style="margin:0 0 16px 0;color:#475569;line-height:1.45;">Hi ${displayName},</p>
                                                 <p style="margin:0 0 20px 0;color:#475569;line-height:1.45;">Thanks for creating a CareOn account. Click the button below to verify your email and finish setting up your profile.</p>
                                                 <div style="text-align:center;margin:36px 0;">
-                                                    <a href="${verifyUrl}" style="background:#0d9488;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;">Verify my email</a>
+                                                    <a href="${verifyUrl}" style="background:#35caf4;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;">Verify my email</a>
                                                 </div>
                                                 <p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
                                                 <p style="word-break:break-all;color:#0d3b66;font-size:12px;margin:0 0 8px 0;">${verifyUrl}</p>
@@ -461,7 +494,9 @@ export const resendVerification = async (req, res) => {
                 console.error("Failed to resend verification email:", err);
             });
 
-        return res.json({ message: "Verification email will be sent shortly" });
+        // Inform client: message and next required wait (in seconds) for UI countdown
+        const nextRequiredWait = BASE_DELAY * Math.pow(2, multiplier);
+        return res.json({ message: "Verification email will be sent shortly", nextWait: nextRequiredWait });
     } catch (err) {
         console.error("Resend verification error:", err);
         return res.status(500).json({ message: "Failed to queue verification email" });
