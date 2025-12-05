@@ -2,6 +2,7 @@ import express from "express";
 import {
   signup,
   login,
+  resendVerification,
   getGoogleAuthURL,
   googleCallback,
   me,
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/resend-verification", resendVerification);
 
 router.get("/verify-email", verifyEmail);
 router.post("/verify-email", verifyEmailJson);

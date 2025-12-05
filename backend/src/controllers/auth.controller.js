@@ -356,22 +356,150 @@ export const signup = async (req, res) => {
                 </html>
                 `;
 
-        let previewUrl = null;
-        try {
-            const result = await sendMail({ to: user.email, subject: "Verify your CareOn email", html });
-            previewUrl = result?.previewUrl || null;
-            if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
-        } catch (err) {
-            console.error("Failed to send verification email:", err);
-        }
+        // Send verification email asynchronously (fire-and-forget) so a slow
+        // mail provider does not block user signup API responses. Log errors
+        // when they occur but don't delay the HTTP response.
+        sendMail({ to: user.email, subject: "Verify your CareOn email", html })
+            .then((result) => {
+                const previewUrl = result?.previewUrl || null;
+                if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
+            })
+            .catch((err) => {
+                console.error("Failed to send verification email:", err);
+            });
 
-        // Return user summary but don't auto-login until verified if you prefer
-        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email sent" };
-        if (previewUrl && process.env.NODE_ENV !== "production") responsePayload.previewUrl = previewUrl;
+        // Return user summary but don't auto-login until verified
+        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email will be sent shortly" };
         res.status(201).json(responsePayload);
     } catch (err) {
         console.error("Signup error:", err);
         res.status(500).json({ message: "Signup failed" });
+    }
+};
+
+// ===========================
+// Resend verification email
+// POST /api/auth/resend-verification
+// ===========================
+export const resendVerification = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: "Email required" });
+
+        const user = await User.findOne({ email });
+        // Always respond quickly; if no user exists, don't reveal that info
+        if (!user) return res.json({ message: "If an account exists, a verification email was queued" });
+
+        if (user.isVerified) return res.status(400).json({ message: "Account already verified" });
+
+        // Server-side resend throttling with exponential backoff.
+        // Base delay in seconds
+        const BASE_DELAY = parseInt(process.env.RESEND_BASE_DELAY_SEC || '30', 10);
+        // Maximum multiplier (to cap delay)
+        const MAX_MULTIPLIER = parseInt(process.env.RESEND_MAX_MULTIPLIER || '6', 10); // up to 32x
+
+        const now = new Date();
+        // Reset multiplier if last resend was long ago (e.g., 24 hours)
+        const RESET_WINDOW_MS = parseInt(process.env.RESEND_RESET_WINDOW_MS || String(24 * 60 * 60 * 1000), 10);
+        let multiplier = user.resendMultiplier || 0;
+        const last = user.lastResendAt || null;
+        if (last && (now - last) > RESET_WINDOW_MS) {
+            multiplier = 0;
+        }
+
+        // Compute current wait required (in seconds)
+        const requiredWait = BASE_DELAY * Math.pow(2, multiplier);
+        if (last) {
+            const elapsed = Math.floor((now - last) / 1000);
+            if (elapsed < requiredWait) {
+                const remaining = requiredWait - elapsed;
+                // Tell client how many seconds remain
+                return res.status(429).json({ message: "Too many requests", remaining });
+            }
+        }
+
+        // Proceed to send and increment multiplier (cap to MAX_MULTIPLIER)
+        multiplier = Math.min(MAX_MULTIPLIER, multiplier + 1);
+        user.resendMultiplier = multiplier;
+        user.lastResendAt = now;
+        // Save throttle state; best-effort — don't block if save fails but try
+        try { await user.save(); } catch (e) { console.warn('resend: failed to persist throttle state', e?.message || e); }
+
+        // Generate short-lived verification token
+        const verifyToken = jwt.sign({ id: user._id, type: "verify" }, process.env.JWT_SECRET, {
+            expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
+        });
+
+        const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+        const displayName = (user && typeof user.name === 'string' && user.name.trim()) ? (user.name.trim().charAt(0).toUpperCase() + user.name.trim().slice(1)) : 'User';
+        const html = `
+                <!doctype html>
+                <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width,initial-scale=1" />
+                        <title>Verify your CareOn email</title>
+                    </head>
+                    <body style="margin:0;padding:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fb;color:#0f1720;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                                                        <tr>
+                                                                            <td style="padding:48px 0 20px 0; text-align:center;">
+                                                                                                    <a href="${frontendUrl}" style="text-decoration:none;display:inline-block;text-align:center;">
+                                                                                                        <!-- Text-based logo for maximum compatibility -->
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#0d3b66; font-weight:800; font-size:24px; letter-spacing:0.2px;">CareOn</div>
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#64748b; font-size:12px; margin-top:4px;">Breathe better. Live healthier.</div>
+                                                                                                    </a>
+                                                                                                </td>
+                                                        </tr>
+                            <tr>
+                                <td align="center">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" width="420" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 14px 40px rgba(16,24,40,0.12);">
+                                        <tr>
+                                            <td style="padding:44px 28px;">
+                                                <h1 style="margin:0 0 8px 0;font-size:20px;color:#0d3b66;">Verify your email</h1>
+                                                <p style="margin:0 0 16px 0;color:#475569;line-height:1.45;">Hi ${displayName},</p>
+                                                <p style="margin:0 0 20px 0;color:#475569;line-height:1.45;">Thanks for creating a CareOn account. Click the button below to verify your email and finish setting up your profile.</p>
+                                                <div style="text-align:center;margin:36px 0;">
+                                                    <a href="${verifyUrl}" style="background:#35caf4;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;">Verify my email</a>
+                                                </div>
+                                                <p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
+                                                <p style="word-break:break-all;color:#0d3b66;font-size:12px;margin:0 0 8px 0;">${verifyUrl}</p>
+                                                <hr style="border:none;border-top:1px solid #eef2f6;margin:22px 0;" />
+                                                <p style="color:#64748b;font-size:13px;margin:0;">If you didn't create an account with CareOn, you can safely ignore this message.</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background:#f8fafc;padding:18px 36px;text-align:center;color:#94a3b8;font-size:13px;">CareOn - Your personal breathing & health companion<br/>Need help? <a href="mailto:support@careon.app" style="color:#0d9488;text-decoration:none;">support@careon.app</a></td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:22px 0;text-align:center;color:#94a3b8;font-size:12px;">© ${new Date().getFullYear()} CareOn. All rights reserved.</td>
+                            </tr>
+                        </table>
+                    </body>
+                </html>
+                `;
+
+        // Fire-and-forget send
+        sendMail({ to: user.email, subject: "Verify your CareOn email", html })
+            .then((result) => {
+                const previewUrl = result?.previewUrl || null;
+                if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
+            })
+            .catch((err) => {
+                console.error("Failed to resend verification email:", err);
+            });
+
+        // Inform client: message and next required wait (in seconds) for UI countdown
+        const nextRequiredWait = BASE_DELAY * Math.pow(2, multiplier);
+        return res.json({ message: "Verification email will be sent shortly", nextWait: nextRequiredWait });
+    } catch (err) {
+        console.error("Resend verification error:", err);
+        return res.status(500).json({ message: "Failed to queue verification email" });
     }
 };
 

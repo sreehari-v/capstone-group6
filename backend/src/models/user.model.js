@@ -10,6 +10,9 @@ const userSchema = new mongoose.Schema(
         // Email verification
         isVerified: { type: Boolean, default: false },
         verificationToken: { type: String },
+    // Resend throttling
+    resendMultiplier: { type: Number, default: 0 },
+    lastResendAt: { type: Date },
         avatar: { type: String },
         // Optional profile fields
         age: { type: Number },
