@@ -11,7 +11,7 @@ const AppLayout = () => {
       <MainNavBar />
 
       {/* Page content under fixed navbar; flex-1 lets the main area grow so the footer sits at the bottom */}
-      <main className="pt-20 px-4 md:px-8 pb-8 flex-1">
+      <main className="flex-1">
         <Outlet />
       </main>
       {/* Footer */}

@@ -101,13 +101,60 @@ export const AuthProvider = ({ children }) => {
   }, [fetchMe]);
 
   const logout = async () => {
+    // Prevent concurrent auth fetches from re-authenticating while logout is in-flight
     try {
-      await axios.post(`${apiBase}/api/auth/logout`, {}, { withCredentials: true });
+      localStorage.setItem("suppressAuthFetch", "1");
+    } catch {
+      /* ignore storage errors */
+    }
+
+    // Read the current CSRF token from cookie (double-submit cookie is non-httpOnly)
+    const readCookie = (name) => {
+      try {
+        const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return m ? decodeURIComponent(m[2]) : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const csrfFromCookie = readCookie('csrfToken') || csrfToken || null;
+
+    try {
+      await axios.post(
+        `${apiBase}/api/auth/logout`,
+        {},
+        {
+          withCredentials: true,
+          headers: csrfFromCookie ? { 'X-CSRF-Token': csrfFromCookie } : {}
+        }
+      );
     } catch (err) {
       console.debug("AuthContext.logout: logout request failed", err?.response?.status || err?.message);
     }
+
+    // Immediately clear client state. Then trigger a quick re-check from the server
+    // so UI can reflect the true server-side auth state if cookies failed to clear.
     hardResetAuth();
+    try {
+      // best-effort re-check — fetchMe will reset state again if server still
+      // considers the session valid
+      await fetchMe();
+    } catch {
+      // ignore errors here
+    }
+
+  try { localStorage.removeItem('suppressAuthFetch'); } catch { /* ignore */ }
   };
+
+  // Log user changes in development for debugging logout issues
+  useEffect(() => {
+    try {
+      if (import.meta.env.DEV) console.debug("AuthContext: user changed ->", user);
+    } catch {
+      /* ignore */
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider
