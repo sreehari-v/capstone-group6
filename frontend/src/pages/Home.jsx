@@ -1,61 +1,61 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-// Using icon glyphs instead of image assets for a lighter, user-focused home page
 
 const Home = () => {
   const { user } = useAuth();
 
   return (
     <div className="flex-1">
-      {/* make the hero background full-bleed by removing section padding
-          and applying padding to the content wrapper instead */}
-      <section className="relative flex min-h-[100vh] w-full items-center justify-center">
-        {/* Background video — place /images/home-bg.mp4 in public/ */}
+      <section className="relative flex min-h-[100vh] w-full items-center justify-center overflow-hidden">
         <video
-          className="absolute inset-0 w-full h-full object-cover z-0"
-          src="/videos/home-bg.mp4"
+          className="absolute inset-0 w-full h-full object-cover z-0 filter blur-md"
+          src="/videos/home-bg-1.mp4"
           autoPlay
           muted
           loop
           playsInline
           aria-hidden
         />
-        {/* Tint + subtle backdrop blur to keep text readable */}
-
 
         <div className="z-10 flex w-full max-w-6xl flex-col items-center gap-8 text-center py-20 px-4 pt-32 md:px-10">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl text-[var(--text-primary)]">
-            CareOn - Your personal health coach
-          </h1>
-          <p className="max-w-3xl text-lg text-[var(--text-secondary)]">
-            Short guided breathing exercises, real-time tracking, and gentle
-            reminders to help you reduce stress, walk better, and stay focused -
-            all for you, on your schedule.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            {user ? (
-              <Link
-                to="/dashboard"
-                className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-primary text-base font-bold shadow-lg"
-              >
-                <span className="truncate">Dashboard</span>
-              </Link>
-            ) : (
-              <Link
-                to="/register"
-                className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-primary text-base font-bold shadow-lg"
-              >
-                <span className="truncate">Get Started</span>
-              </Link>
-            )}
+          {/* Gradient glass card for hero text */}
+          <div className="w-full rounded-2xl border border-white/20 bg-gradient-to-br from-black/25 via-white/0 to-black/15 dark:from-black/30 dark:via-black/20 dark:to-black/15 backdrop-blur-2xl p-8 md:p-12 shadow-2xl">
+            <div className="max-w-4xl mx-auto text-center">
+              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl text-white">
+                CareOn - Your personal health coach
+              </h1>
+              <p className="mt-4 max-w-3xl mx-auto text-lg text-white/90">
+                Short guided breathing exercises, real-time tracking, and gentle
+                reminders to help you reduce stress, walk better, and stay
+                focused - all for you, on your schedule.
+              </p>
 
-            <Link
-              to="/features"
-              className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 button-secondary text-base font-bold backdrop-blur-sm"
-            >
-              <span className="truncate">Learn More</span>
-            </Link>
+              <div className="mt-6 flex flex-wrap gap-4 justify-center">
+                {user ? (
+                  <Link
+                    to="/dashboard"
+                    className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 text-base font-bold shadow-lg bg-gradient-to-r from-[var(--primary-color)] to-[var(--secondary-color)] text-white hover:opacity-95"
+                  >
+                    <span className="truncate">Dashboard</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/register"
+                    className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 text-base font-bold shadow-lg bg-gradient-to-r from-[var(--primary-color)] to-[var(--secondary-color)] text-white hover:opacity-95"
+                  >
+                    <span className="truncate">Get Started</span>
+                  </Link>
+                )}
+
+                <Link
+                  to="/features"
+                  className="flex min-w-[160px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-md h-12 px-6 text-base font-bold backdrop-blur-sm bg-white/10 text-white border border-white/20 hover:bg-white/20"
+                >
+                  <span className="truncate">Learn More</span>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
