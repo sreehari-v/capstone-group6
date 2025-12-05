@@ -18,26 +18,19 @@ const MainNavBar = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between whitespace-nowrap px-6 py-4 text-white shadow-sm transition-all duration-300 bg-white/80 backdrop-blur-md">
+      <header className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between whitespace-nowrap px-6 py-6 text-white shadow-sm transition-all duration-300 bg-white/80 backdrop-blur-md">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="size-7">
-            <svg
-              fill="none"
-              viewBox="0 0 48 48"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                clipRule="evenodd"
-                d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z"
-                fill="var(--primary-color)"
-                fillRule="evenodd"
-              />
-            </svg>
+          <div className="size-7 sm:hidden">
+            <NavLink to="/" aria-label="Home">
+              <img src="/images/careon-logo.png" alt="CareOn logo" className="h-10 w-10 object-contain" />
+            </NavLink>
           </div>
-          <h2 className="text-xl font-bold text-[var(--text-primary)]">
-            Care On
-          </h2>
+          <div className="hidden sm:block">
+            <NavLink to="/" aria-label="Home">
+              <img src="/images/careon-txt-logo.png" alt="CareOn" className="h-8 object-contain" />
+            </NavLink>
+          </div>
         </div>
 
         {/* Desktop nav */}
@@ -131,24 +124,15 @@ const MainNavBar = () => {
 
           <div className="relative z-50 h-full w-full flex flex-col bg-[rgba(2,6,23,0.64)] backdrop-blur-lg border-t border-white/10 text-white nav-panel">
             <div className="flex items-center justify-between px-6 pt-6">
-              <div className="flex items-center gap-3">
-                <div className="size-7">
-                  <svg
-                    fill="none"
-                    viewBox="0 0 48 48"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-8 w-8"
-                  >
-                    <path
-                      clipRule="evenodd"
-                      d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z"
-                      fill="var(--primary-color)"
-                      fillRule="evenodd"
-                    />
-                  </svg>
+              <NavLink to="/" onClick={closeMenu} className="flex items-center gap-3">
+                <div className="ml-2 hidden">
+                  <img src="/images/careon-logo.png" alt="CareOn logo" className="h-8 w-8 object-contain" />
                 </div>
-                <h2 className="text-lg font-bold text-white">CareOn</h2>
-              </div>
+                {/* hide the text wordmark in the mobile overlay so only the icon shows */}
+                <div>
+                  <img src="/images/careon-txt-logo.png" alt="CareOn" className="h-6 object-contain" />
+                </div>
+              </NavLink>
 
               <button
                   onClick={closeMenu}

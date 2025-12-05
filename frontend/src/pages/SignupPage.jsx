@@ -33,9 +33,8 @@ export default function SignupPage() {
         />
 
         <div className="max-w-md w-full relative z-10 bg-white/40 dark:bg-slate-900/60 backdrop-blur-sm border border-gray/10 dark:border-slate-700/40 p-8 rounded-xl text-gray-900 dark:text-white">
-          <Link to="/" className="flex items-center gap-2 text-2xl font-bold">
-            <i className="fa-solid fa-wind text-primary text-3xl" aria-hidden="true" />
-            <span>CareOn</span>
+          <Link to="/" className="flex items-center gap-2">
+            <img src="/images/careon-txt-logo.png" alt="CareOn" className="h-12 object-contain" />
           </Link>
 
           <h1 className="text-4xl font-bold mt-6">
