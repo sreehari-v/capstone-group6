@@ -356,22 +356,66 @@ export const signup = async (req, res) => {
                 </html>
                 `;
 
-        let previewUrl = null;
-        try {
-            const result = await sendMail({ to: user.email, subject: "Verify your CareOn email", html });
-            previewUrl = result?.previewUrl || null;
-            if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
-        } catch (err) {
-            console.error("Failed to send verification email:", err);
-        }
+        // Send verification email asynchronously (fire-and-forget) so a slow
+        // mail provider does not block user signup API responses. Log errors
+        // when they occur but don't delay the HTTP response.
+        sendMail({ to: user.email, subject: "Verify your CareOn email", html })
+            .then((result) => {
+                const previewUrl = result?.previewUrl || null;
+                if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
+            })
+            .catch((err) => {
+                console.error("Failed to send verification email:", err);
+            });
 
-        // Return user summary but don't auto-login until verified if you prefer
-        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email sent" };
-        if (previewUrl && process.env.NODE_ENV !== "production") responsePayload.previewUrl = previewUrl;
+        // Return user summary but don't auto-login until verified
+        const responsePayload = { id: user._id, name: user.name, email: user.email, message: "Verification email queued" };
         res.status(201).json(responsePayload);
     } catch (err) {
         console.error("Signup error:", err);
         res.status(500).json({ message: "Signup failed" });
+    }
+};
+
+// ===========================
+// Resend verification email
+// POST /api/auth/resend-verification
+// ===========================
+export const resendVerification = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: "Email required" });
+
+        const user = await User.findOne({ email });
+        // Always respond quickly; if no user exists, don't reveal that info
+        if (!user) return res.json({ message: "If an account exists, a verification email was queued" });
+
+        if (user.isVerified) return res.status(400).json({ message: "Account already verified" });
+
+        // Generate short-lived verification token
+        const verifyToken = jwt.sign({ id: user._id, type: "verify" }, process.env.JWT_SECRET, {
+            expiresIn: process.env.EMAIL_VERIFY_EXPIRES_IN || "1d",
+        });
+
+        const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
+
+        const displayName = (user && typeof user.name === 'string' && user.name.trim()) ? (user.name.trim().charAt(0).toUpperCase() + user.name.trim().slice(1)) : 'User';
+        const html = `Hi ${displayName},\n\nPlease verify your email by visiting: ${verifyUrl}`;
+
+        // Fire-and-forget send
+        sendMail({ to: user.email, subject: "Verify your CareOn email", html })
+            .then((result) => {
+                const previewUrl = result?.previewUrl || null;
+                if (previewUrl) console.log("Preview URL (Ethereal):", previewUrl);
+            })
+            .catch((err) => {
+                console.error("Failed to resend verification email:", err);
+            });
+
+        return res.json({ message: "Verification email queued" });
+    } catch (err) {
+        console.error("Resend verification error:", err);
+        return res.status(500).json({ message: "Failed to queue verification email" });
     }
 };
 
