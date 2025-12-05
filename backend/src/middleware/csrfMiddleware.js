@@ -9,6 +9,7 @@ export default function csrfProtection(req, res, next) {
         "/api/auth/login",
         "/api/auth/signup",
         "/api/auth/verify-email",
+        "/api/auth/resend-verification",
         "/api/auth/google",
         "/api/auth/google/callback",
         "/api/auth/refresh",

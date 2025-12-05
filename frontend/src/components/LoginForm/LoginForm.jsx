@@ -12,6 +12,8 @@ export default function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
 
   const searchParams = new URLSearchParams(location.search);
   const sent = searchParams.get("sent");
@@ -35,6 +37,21 @@ export default function LoginForm() {
       setError(err.response?.data?.message || "Login failed");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResendMessage("");
+    setIsResending(true);
+    try {
+      const base = import.meta.env.VITE_API_BASE || import.meta.env.REACT_APP_API_BASE || "http://localhost:5000";
+      const resp = await axios.post(`${base}/api/auth/resend-verification`, { email }, { withCredentials: true });
+      setResendMessage(resp.data?.message || "Verification email queued");
+    } catch (err) {
+      console.error("Resend error:", err);
+      setResendMessage(err.response?.data?.message || "Failed to resend verification email");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -90,6 +107,20 @@ export default function LoginForm() {
             "Login"
           )}
         </button>
+        {/* Show resend option when login fails due to unverified email */}
+        {error && error.toLowerCase().includes("verify") && (
+          <div className="mt-3 text-center">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isResending || !email}
+              className="text-md text-primary p-2"
+            >
+              {isResending ? "Resending..." : "Resend verification email"}
+            </button>
+            {resendMessage && <div className="mt-2 text-sm text-green-600">{resendMessage}</div>}
+          </div>
+        )}
       </form>
 
       <div className="mt-6">

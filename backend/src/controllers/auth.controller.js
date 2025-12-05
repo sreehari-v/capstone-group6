@@ -399,8 +399,57 @@ export const resendVerification = async (req, res) => {
 
         const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${verifyToken}`;
 
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const displayName = (user && typeof user.name === 'string' && user.name.trim()) ? (user.name.trim().charAt(0).toUpperCase() + user.name.trim().slice(1)) : 'User';
-        const html = `Hi ${displayName},\n\nPlease verify your email by visiting: ${verifyUrl}`;
+        const html = `
+                <!doctype html>
+                <html>
+                    <head>
+                        <meta charset="utf-8" />
+                        <meta name="viewport" content="width=device-width,initial-scale=1" />
+                        <title>Verify your CareOn email</title>
+                    </head>
+                    <body style="margin:0;padding:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:#f6f9fb;color:#0f1720;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
+                                                        <tr>
+                                                                            <td style="padding:48px 0 20px 0; text-align:center;">
+                                                                                                    <a href="${frontendUrl}" style="text-decoration:none;display:inline-block;text-align:center;">
+                                                                                                        <!-- Text-based logo for maximum compatibility -->
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#0d3b66; font-weight:800; font-size:24px; letter-spacing:0.2px;">CareOn</div>
+                                                                                                        <div style="font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; color:#64748b; font-size:12px; margin-top:4px;">Breathe better. Live healthier.</div>
+                                                                                                    </a>
+                                                                                                </td>
+                                                        </tr>
+                            <tr>
+                                <td align="center">
+                                    <table role="presentation" cellpadding="0" cellspacing="0" width="420" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 14px 40px rgba(16,24,40,0.12);">
+                                        <tr>
+                                            <td style="padding:44px 28px;">
+                                                <h1 style="margin:0 0 8px 0;font-size:20px;color:#0d3b66;">Verify your email</h1>
+                                                <p style="margin:0 0 16px 0;color:#475569;line-height:1.45;">Hi ${displayName},</p>
+                                                <p style="margin:0 0 20px 0;color:#475569;line-height:1.45;">Thanks for creating a CareOn account. Click the button below to verify your email and finish setting up your profile.</p>
+                                                <div style="text-align:center;margin:36px 0;">
+                                                    <a href="${verifyUrl}" style="background:#0d9488;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;display:inline-block;font-weight:700;font-size:15px;">Verify my email</a>
+                                                </div>
+                                                <p style="margin:0 0 12px 0;color:#94a3b8;font-size:13px;">If the button doesn't work, copy and paste this link into your browser:</p>
+                                                <p style="word-break:break-all;color:#0d3b66;font-size:12px;margin:0 0 8px 0;">${verifyUrl}</p>
+                                                <hr style="border:none;border-top:1px solid #eef2f6;margin:22px 0;" />
+                                                <p style="color:#64748b;font-size:13px;margin:0;">If you didn't create an account with CareOn, you can safely ignore this message.</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td style="background:#f8fafc;padding:18px 36px;text-align:center;color:#94a3b8;font-size:13px;">CareOn - Your personal breathing & health companion<br/>Need help? <a href="mailto:support@careon.app" style="color:#0d9488;text-decoration:none;">support@careon.app</a></td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:22px 0;text-align:center;color:#94a3b8;font-size:12px;">© ${new Date().getFullYear()} CareOn. All rights reserved.</td>
+                            </tr>
+                        </table>
+                    </body>
+                </html>
+                `;
 
         // Fire-and-forget send
         sendMail({ to: user.email, subject: "Verify your CareOn email", html })
