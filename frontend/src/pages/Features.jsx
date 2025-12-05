@@ -49,7 +49,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="/src/assets/images/breath-smartphone.png"
+              src="/images/breath-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>
@@ -68,7 +68,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="/src/assets/images/step-smartphone.png"
+              src="/images/step-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>
@@ -131,7 +131,7 @@ const Features = () => {
               className="rounded-lg shadow-2xl w-full max-w-sm"
               height={600}
               loading="lazy"
-              src="/src/assets/images/medication-smartphone.png"
+              src="/images/medication-smartphone.png"
               style={{ aspectRatio: "400 / 600", objectFit: "cover" }}
             />
           </div>

@@ -62,7 +62,7 @@ const Donate = () => {
           <div className="absolute inset-0">
             <img
               className="w-full h-full object-cover object-center"
-              src="../src/assets/images/Donate.jpeg"
+              src="/images/Donate.jpeg"
               alt="Together We Heal - Diverse group of people and healthcare professionals"
               onError={(e) => {
                 e.target.onerror = null;
@@ -163,7 +163,7 @@ const Donate = () => {
                 <img
                   alt="Happy children receiving care or playing"
                   className="rounded-lg shadow-md w-full h-auto object-cover"
-                  src="../src/assets/images/Donate-2.jpeg"
+                  src="/images/Donate-2.jpeg"
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src =
